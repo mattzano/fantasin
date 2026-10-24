@@ -139,7 +139,7 @@ td.p{text-align:right;width:60px}
 .switch input{width:20px;height:20px}
 .split{display:grid;gap:8px;grid-template-columns:1fr 1fr}
 @media (max-width:420px){.brand h1{font-size:22px}.split{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:no-preference){.eeg path{stroke-dasharray:900;stroke-dashoffset:900;animation:draw 2.4s ease-out forwards}@keyframes draw{to{stroke-dashoffset:0}}}
+
 
 .row.me{background:color-mix(in srgb,var(--accent) 7%,transparent)}
 .mine span{display:block}
@@ -265,8 +265,37 @@ function toast(m){ const t=$("toast"); t.textContent=m; t.hidden=false; clearTim
 function banner(m){ const b=$("banner"); b.hidden=!m; b.textContent=m||""; }
 function when(ms){ if(!ms) return ""; const d=new Date(ms); return d.toLocaleString("it-IT",{weekday:"short",day:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Europe/Rome"}); }
 function saveDraft(){ try{ localStorage.setItem("fs-draft",JSON.stringify(S.draft)); }catch(e){} }
-(function(){ let d="M0 11", x=0; const seq=[0,0,1,-1,0,0,0,7,-9,3,0,0,1,0,-2,0,0];
-  while(x<700){ for(const y of seq){ x+=7; d+=` L${x} ${11-y}`; if(x>=700)break; } } $("eegPath").setAttribute("d",d); })();
+/* EEG continuo: fondo casuale + punta-onda sporadiche + crisi (evoluzione ritmica e depressione post-critica) */
+(function(){ const P=$("eegPath"), W=700, DX=2, N=W/DX, SPEED=70; // px/s
+  let t=0, mode="bg", left=rnd(4,9), ph=0, f=3, amp=0, sw=null;
+  function rnd(a,b){ return a+Math.random()*(b-a); }
+  const ys=[]; for(let i=0;i<=N;i++) ys.push(sample(DX/SPEED));
+  function bg(dt){ t+=dt; return 1.6*Math.sin(t*2*Math.PI*10)+1.1*Math.sin(t*2*Math.PI*6.3+1)+0.9*Math.sin(t*2*Math.PI*1.7)+rnd(-0.9,0.9); }
+  function spikeWave(x){ return x<0.12? -9*Math.sin(Math.PI*x/0.12) : 5*Math.sin(Math.PI*(x-0.12)/0.88); } // x in [0,1)
+  function sample(dt){
+    left-=dt;
+    if(mode==="bg"){
+      if(sw){ sw.p+=dt*3; if(sw.p>=sw.n){ sw=null; } else return spikeWave(sw.p%1)*0.9+rnd(-0.6,0.6); }
+      if(left<=0){ if(Math.random()<0.3){ mode="ictal"; left=rnd(5,10); f=rnd(4,6); amp=0.3; ph=0; } else { sw={p:0,n:1+Math.floor(rnd(0,3))}; left=rnd(3,8); } }
+      return bg(dt);
+    }
+    if(mode==="ictal"){ // ritmo che rallenta e cresce di ampiezza
+      amp=Math.min(1.1,amp+dt*0.35); f=Math.max(2.5,f-dt*0.3); ph+=dt*f;
+      const v=Math.random()<0.5? spikeWave(ph%1) : 8*Math.sin(2*Math.PI*ph);
+      if(left<=0){ mode="post"; left=rnd(2,3.5); }
+      return amp*(spikeWave(ph%1)*0.7+0.3*v)+rnd(-1,1);
+    }
+    if(left<=0){ mode="bg"; left=rnd(4,9); }
+    return 0.35*bg(dt)+0.3*Math.sin(t*2*Math.PI*1.2); // post-critico: tracciato depresso
+  }
+  function draw(){ let d=`M0 ${(11-ys[0]).toFixed(1)}`; for(let i=1;i<ys.length;i++) d+=` L${i*DX} ${(11-Math.max(-10,Math.min(10,ys[i]))).toFixed(1)}`; P.setAttribute("d",d); }
+  draw();
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  let last=performance.now(), acc=0;
+  (function loop(ts){ acc+=Math.min(0.25,(ts-last)/1000)*SPEED; last=ts;
+    let moved=false; while(acc>=DX){ acc-=DX; ys.shift(); ys.push(sample(DX/SPEED)); moved=true; }
+    if(moved) draw(); requestAnimationFrame(loop); })(last);
+})();
 
 /* ---------- tabs ---------- */
 const TABS=[
