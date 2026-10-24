@@ -143,12 +143,14 @@ td.p{text-align:right;width:60px}
 .row.me{background:color-mix(in srgb,var(--accent) 7%,transparent)}
 .mine span{display:block}
 .bgrid5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
-.bcell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:3px;background:var(--card);border:1.5px solid var(--line);border-radius:8px;font-size:clamp(9px,2.6vw,12.5px);line-height:1.15;font-weight:500;overflow-wrap:anywhere;hyphens:auto}
+.bcell{aspect-ratio:1;width:100%;min-width:0;margin:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:4px;background:var(--card);border:1.5px solid var(--line);border-radius:8px;font-size:13px;line-height:1.1;font-weight:500;overflow:hidden;overflow-wrap:normal;hyphens:manual}
+.bcell>span{display:block;max-width:100%;max-height:100%}
 .bcell.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
 .bcell.free{background:var(--soft);color:var(--muted);border-style:dashed}
 .bcell.win{box-shadow:0 0 0 2px var(--gold) inset}
 button.bcell{font:inherit;color:inherit;cursor:pointer;position:relative}
-.bcell.ok::after{content:"✓";position:absolute;top:2px;right:4px;font-size:10px;font-weight:700;color:var(--gold)}
+.bcell.ok{padding-top:10px}
+.bcell.ok::after{content:"✓";position:absolute;top:1px;right:4px;font-size:10px;font-weight:700;color:var(--gold)}
 .bstat{display:flex;justify-content:space-between;align-items:center;margin:12px 2px;font-size:14px}
 </style>
 </head>
@@ -316,7 +318,7 @@ function go(v){
   if(!TABS.some(t=>t.id===v)) v="classifica";
   S.view=v; document.querySelectorAll("[data-view]").forEach(s=>s.hidden=s.dataset.view!==v);
   try{ if(location.hash!=="#"+v) history.replaceState(null,"","#"+v); }catch(e){}
-  renderTabs(); window.scrollTo(0,0);
+  renderTabs(); window.scrollTo(0,0); if(v==="bingo") fitBingo();
 }
 window.addEventListener("hashchange",()=>{ const v=location.hash.slice(1); if(v&&v!==S.view) go(v); });
 
@@ -445,6 +447,16 @@ const LINES=(()=>{const L=[];for(let r=0;r<5;r++)L.push([0,1,2,3,4].map(c=>r*5+c
 /* segnature manuali della cartella: solo sul dispositivo, i punti restano quelli confermati dagli arbitri */
 function bingoMarks(card){ try{ const m=JSON.parse(localStorage.getItem("fs-bingo:"+card.join(","))||"[]"); return new Set(Array.isArray(m)?m:[]); }catch(e){ return new Set(); } }
 function saveBingoMarks(card,m){ try{ localStorage.setItem("fs-bingo:"+card.join(","),JSON.stringify([...m])); }catch(e){} }
+/* rimpicciolisce il testo di ogni casella finché la frase entra tutta nel quadrato */
+function fitBingo(){
+  const over=(c,sp)=>sp.scrollHeight>c.clientHeight-8||sp.scrollWidth>c.clientWidth-8;
+  const shrink=(c,sp,min)=>{ let f=13; c.style.fontSize=f+"px"; while(f>min&&over(c,sp)){ f-=0.5; c.style.fontSize=f+"px"; } };
+  document.querySelectorAll("#bingoBox .bcell").forEach(c=>{ const sp=c.firstChild; c.style.hyphens=c.style.overflowWrap="";
+    if(!c.clientWidth) return;
+    shrink(c,sp,9); // prima parole intere; se una parola non entra, sillaba
+    if(over(c,sp)){ c.style.hyphens="auto"; c.style.overflowWrap="anywhere"; shrink(c,sp,6.5); } });
+}
+addEventListener("resize",()=>{ clearTimeout(fitBingo._t); fitBingo._t=setTimeout(fitBingo,100); });
 function renderBingo(){
   $("bingoRule").textContent=`Ogni riga, colonna o diagonale vale ${fmt(S.cfg.bingoRiga)}; la cartella piena ${fmt(S.cfg.bingoPiena)} in più.`;
   const box=$("bingoBox"); box.replaceChildren();
@@ -457,11 +469,12 @@ function renderBingo(){
   const win=new Set(); let lines=0; LINES.forEach(l=>{ if(l.every(i=>on[i])){ lines++; l.forEach(i=>win.add(i)); } });
   const grid=h("div",{class:"bgrid5"});
   cells.forEach((id,i)=>{ const ok=!!(B[id]&&B[id].on), cls="bcell"+(on[i]?" on":"")+(win.has(i)?" win":"")+(ok?" ok":"");
-    if(id==="FREE") return grid.append(h("div",{class:cls+" free"},"Pausa caffè ☕"));
+    if(id==="FREE") return grid.append(h("div",{class:cls+" free"},h("span",{text:"Pausa caffè ☕"})));
     grid.append(h("button",{type:"button",class:cls,"aria-pressed":String(on[i]),title:ok?"Confermata dagli arbitri"+(B[id].at?" · "+B[id].at:""):"",
-      onclick:()=>{ marks.has(id)?marks.delete(id):marks.add(id); saveBingoMarks(me.card,marks); renderBingo(); }},B[id]?B[id].t:"?")); });
+      onclick:()=>{ marks.has(id)?marks.delete(id):marks.add(id); saveBingoMarks(me.card,marks); renderBingo(); }},h("span",{text:B[id]?B[id].t:"?"}))); });
   const marked=on.filter(Boolean).length-1;
-  box.append(grid,h("div",{class:"bstat"},h("b",{text:`${lines} ${lines===1?"linea":"linee"} · ${fmt(me.pg||0)} punti`}),h("span",{class:"muted",text:`${marked}/24 caselle`})));
+  box.append(grid); fitBingo();
+  box.append(h("div",{class:"bstat"},h("b",{text:`${lines} ${lines===1?"linea":"linee"} · ${fmt(me.pg||0)} punti`}),h("span",{class:"muted",text:`${marked}/24 caselle`})));
   const recent=S.bingo.filter(b=>b.on);
   box.append(h("h3",{text:`Frasi già sentite (${recent.length}/${S.bingo.length})`}),
     h("div",{class:"words"},...(recent.length?recent.map(b=>h("span",{class:"word",text:b.t})):[h("span",{class:"muted",text:"Nessuna, per ora."})])));
