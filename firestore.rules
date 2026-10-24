@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function isRef() {
+      return signedIn() && exists(/databases/$(database)/documents/refs/$(request.auth.uid));
+    }
+    function locked() {
+      return exists(/databases/$(database)/documents/config/main)
+        && get(/databases/$(database)/documents/config/main).data.get('locked', false) == true;
+    }
+
+    // Squadre: tutti leggono, ognuno scrive solo la propria (finché non sono bloccate)
+    match /teams/{uid} {
+      allow read: if true;
+      allow create, update: if signedIn() && request.auth.uid == uid && !locked()
+        && request.resource.data.picks is list
+        && request.resource.data.picks.size() == 5
+        && request.resource.data.cap in request.resource.data.picks
+        && request.resource.data.name is string && request.resource.data.name.size() <= 40
+        && request.resource.data.player is string && request.resource.data.player.size() <= 40;
+      allow delete: if signedIn() && request.auth.uid == uid && !locked();
+    }
+
+    // Codici arbitro: si creano solo dalla console Firebase, nessuno li può leggere
+    match /refkeys/{key} {
+      allow read, write: if false;
+    }
+
+    // Diventa arbitro chi apre il link con un codice valido
+    match /refs/{uid} {
+      allow get: if signedIn() && request.auth.uid == uid;
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.k is string
+        && exists(/databases/$(database)/documents/refkeys/$(request.resource.data.k));
+      allow update, delete: if false;
+    }
+
+    // Punti: tutti leggono, solo gli arbitri assegnano o annullano
+    match /events/{id} {
+      allow read: if true;
+      allow create: if isRef()
+        && request.resource.data.p is int
+        && request.resource.data.p >= -100 && request.resource.data.p <= 100
+        && request.resource.data.a is string;
+      allow delete: if isRef();
+      allow update: if false;
+    }
+
+    // Persone fuori lista aggiunte dagli arbitri
+    match /extra/{id} {
+      allow read: if true;
+      allow write: if isRef();
+    }
+
+    // Blocco squadre
+    match /config/{doc} {
+      allow read: if true;
+      allow write: if isRef();
+    }
+  }
+}

@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14213D">
+<title>FantaSIN Firenze</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anybody:wdth,wght@75..150,500..900&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: app a schermo singolo, header "tracciato EEG" + viste a schede + barra schede in basso */
+:root{
+  --paper:#F2F4F8; --card:#FFFFFF; --ink:#14213D; --muted:#5B6478; --line:#D9DFE9;
+  --accent:#C4302B; --accent-ink:#FFFFFF; --gold:#A87405; --good:#1D7A4C; --bad:#B3261E; --soft:#E7EBF2;
+  --f-display:"Anybody", "Arial Narrow", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0D1322; --card:#151D31; --ink:#E7ECF5; --muted:#9AA5BB; --line:#27314B;
+  --accent:#FF6A5C; --accent-ink:#1A0B09; --gold:#E7B84C; --good:#4CC38A; --bad:#FF8A80; --soft:#1C2540; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0D1322; --card:#151D31; --ink:#E7ECF5; --muted:#9AA5BB; --line:#27314B;
+  --accent:#FF6A5C; --accent-ink:#1A0B09; --gold:#E7B84C; --good:#4CC38A; --bad:#FF8A80; --soft:#1C2540; color-scheme:dark}
+html,body{height:100%}
+*{box-sizing:border-box}
+html{padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+img{max-width:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.45}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+.wrap{max-width:720px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 calc(84px + env(safe-area-inset-bottom,0px))}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);padding-block:12px 8px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+.brand h1{font-family:var(--f-display);font-weight:900;font-stretch:125%;font-size:26px;line-height:1;margin:0;letter-spacing:-.01em}
+.brand h1 span{color:var(--accent)}
+.brand small{display:block;font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.mine{text-align:right;font-family:var(--f-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.mine b{display:block;font-family:var(--f-display);font-stretch:100%;font-size:24px;color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums}
+.eeg{display:block;width:100%;height:22px;margin-top:6px}
+.eeg path{fill:none;stroke:var(--accent);stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round}
+.unoff{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* tabs */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--card);border-top:1px solid var(--line);
+  padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+.tabs .in{max-width:720px;margin:0 auto;display:grid;grid-template-columns:repeat(var(--n,4),1fr)}
+.tabs button{background:none;border:0;padding:10px 4px 12px;font-size:12px;font-weight:600;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+.tabs button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tabs button[aria-current="page"]{color:var(--accent)}
+
+/* generic */
+h2{font-family:var(--f-display);font-stretch:112%;font-weight:800;font-size:20px;margin:22px 0 10px;text-wrap:balance}
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:22px 0 8px;font-weight:600}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r)}
+.list{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--line);min-width:0}
+.row:last-child{border-bottom:0}
+.row .main{min-width:0}
+.row .nm{font-weight:600;overflow-wrap:anywhere}
+.row .sub{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:8px 12px;font-weight:600}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.sm{padding:5px 9px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.icon-btn{border:1px solid var(--line);background:var(--card);border-radius:8px;width:34px;height:34px;display:grid;place-items:center;font-weight:700}
+input[type=text],input[type=search],input[type=number],select,textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+textarea{min-height:110px;resize:vertical}
+label.f{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin:12px 0 5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 11px;font-size:13px;font-weight:600}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.pts{font-family:var(--f-mono);font-weight:600;font-variant-numeric:tabular-nums}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+.price{font-family:var(--f-mono);font-size:12px;font-weight:600;border:1px solid var(--line);border-radius:6px;padding:2px 6px;white-space:nowrap}
+.note{border-left:3px solid var(--accent);background:var(--soft);padding:10px 12px;border-radius:0 8px 8px 0;font-size:14px;margin:12px 0}
+.empty{padding:22px 14px;text-align:center;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(80px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--paper);padding:9px 14px;border-radius:8px;font-size:14px;z-index:9;max-width:calc(100% - 32px)}
+
+/* leaderboard */
+.rank{font-family:var(--f-display);font-weight:900;font-size:22px;width:34px;text-align:center;color:var(--muted);font-variant-numeric:tabular-nums}
+.r1 .rank{color:var(--gold)}
+.total{font-family:var(--f-display);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+.picks{grid-column:1/-1;display:flex;flex-direction:column;gap:2px;padding:4px 0 2px 44px;font-size:13.5px}
+.picks div{display:flex;justify-content:space-between;gap:8px}
+.cap{color:var(--gold);font-weight:700}
+.feed .row{grid-template-columns:auto 1fr auto}
+.badge{font-family:var(--f-mono);font-size:12px;font-weight:600;min-width:42px;text-align:center;border-radius:6px;padding:3px 0}
+.badge.pos{background:color-mix(in srgb,var(--good) 14%,transparent)}
+.badge.neg{background:color-mix(in srgb,var(--bad) 14%,transparent)}
+
+/* team editor */
+.budget{display:flex;align-items:center;gap:10px;margin:8px 0 4px}
+.bar{flex:1;height:8px;background:var(--soft);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);width:0}
+.bar.over i{background:var(--bad)}
+.slots .row{grid-template-columns:28px 1fr auto auto}
+.slotn{font-family:var(--f-mono);color:var(--muted);font-size:12px}
+.star{border:1px solid var(--line);background:var(--card);border-radius:8px;height:34px;padding:0 9px;font-weight:700;font-size:12px;color:var(--muted)}
+.star[aria-pressed="true"]{background:var(--gold);border-color:var(--gold);color:var(--paper)}
+.results{max-height:340px;overflow:auto}
+
+/* artists */
+.art .row{grid-template-columns:1fr auto auto}
+.apps{grid-column:1/-1;font-size:13px;display:flex;flex-direction:column;gap:6px;padding:2px 0 4px}
+.apps div{display:grid;grid-template-columns:76px 1fr;gap:8px}
+.apps .when{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.role{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.toolbar input{flex:1 1 200px}
+.toolbar select{flex:0 0 auto;width:auto}
+
+/* rules */
+table{border-collapse:collapse;width:100%}
+td{padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.p{text-align:right;width:60px}
+.words{display:flex;flex-wrap:wrap;gap:6px}
+.word{font-family:var(--f-mono);font-size:13px;background:var(--soft);border-radius:6px;padding:4px 8px}
+
+/* referee */
+.bonusgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.bonusgrid button{text-align:left;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.bonusgrid button b{font-family:var(--f-mono);font-size:16px}
+.bonusgrid button span{font-size:13px;overflow-wrap:anywhere}
+.bonusgrid button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.sel{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px}
+.switch{display:flex;align-items:center;gap:10px;padding:10px 12px}
+.switch input{width:20px;height:20px}
+.split{display:grid;gap:8px;grid-template-columns:1fr 1fr}
+@media (max-width:420px){.brand h1{font-size:22px}.split{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:no-preference){.eeg path{stroke-dasharray:900;stroke-dashoffset:900;animation:draw 2.4s ease-out forwards}@keyframes draw{to{stroke-dashoffset:0}}}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div>
+        <h1>Fanta<span>SIN</span></h1>
+        <small>Firenze · Fortezza da Basso · 24–27 ottobre 2026</small>
+      </div>
+      <div class="mine" id="mine">La tua squadra<b class="num" id="mineScore">–</b></div>
+    </div>
+    <svg class="eeg" viewBox="0 0 700 22" preserveAspectRatio="none" aria-hidden="true"><path id="eegPath" d=""></path></svg>
+  </header>
+
+  <div id="banner" hidden class="note"></div>
+
+  <section id="v-classifica" data-view="classifica">
+    <h2>Classifica</h2>
+    <div class="card list" id="board"><div class="empty">Ancora nessuna squadra. Crea la tua nella scheda “Squadra”.</div></div>
+    <h3>Ultimi punti</h3>
+    <div class="card list feed" id="feed"><div class="empty">I punti appariranno qui appena gli arbitri iniziano ad assegnarli.</div></div>
+  </section>
+
+  <section id="v-squadra" data-view="squadra" hidden>
+    <h2>La tua squadra</h2>
+    <div id="lockedNote" class="note" hidden>Le squadre sono bloccate: il fantacongresso è in corso. Puoi solo guardare i tuoi punti.</div>
+    <label class="f" for="playerName">Il tuo nome (come apparirà in classifica)</label>
+    <input type="text" id="playerName" maxlength="40" placeholder="Nome e cognome">
+    <label class="f" for="teamName">Nome della squadra</label>
+    <input type="text" id="teamName" maxlength="40" placeholder="Es. I Riflessi Osteotendinei">
+    <div class="budget"><div class="bar" id="bar"><i></i></div><span class="num" id="budgetTxt">0 / 100</span></div>
+    <div class="muted" style="font-size:13px">5 relatori o moderatori, 100 Neuroni in tutto. Tocca ★ per scegliere il capitano: i suoi punti contano doppio.</div>
+    <div class="card list slots" id="slots" style="margin-top:10px"></div>
+    <label class="f" for="pickSearch">Aggiungi un relatore</label>
+    <input type="search" id="pickSearch" placeholder="Cerca per cognome, città o argomento">
+    <div class="card list results" id="pickResults" style="margin-top:8px" hidden></div>
+    <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+      <button class="btn pri" id="saveTeam">Salva squadra</button>
+      <span class="muted" id="saveState" style="align-self:center;font-size:13px"></span>
+    </div>
+  </section>
+
+  <section id="v-artisti" data-view="artisti" hidden>
+    <h2>Relatori e moderatori</h2>
+    <div class="toolbar">
+      <input type="search" id="artSearch" placeholder="Cerca nome, città, sessione">
+      <select id="artSort" aria-label="Ordina">
+        <option value="az">A–Z</option>
+        <option value="pts">Più punti</option>
+        <option value="price">Più cari</option>
+      </select>
+    </div>
+    <div class="chips" id="dayChips" style="margin-bottom:10px"></div>
+    <div class="muted" id="artCount" style="font-size:13px;margin-bottom:6px"></div>
+    <div class="card list art" id="artList"></div>
+  </section>
+
+  <section id="v-regole" data-view="regole" hidden>
+    <h2>Regolamento</h2>
+    <div class="card" style="padding:12px 14px">
+      <p><b>Squadra.</b> Scegli 5 tra relatori e moderatori del programma, con un budget di 100 Neuroni. Il prezzo dipende da quante volte la persona compare nel programma (da 10 a 30 Neuroni).</p>
+      <p><b>Capitano.</b> Uno dei cinque è il capitano: i suoi punti valgono doppio.</p>
+      <p style="margin:0"><b>Punti.</b> Gli arbitri assegnano bonus e malus dal telefono mentre succedono. La classifica si aggiorna da sola.</p>
+    </div>
+    <h3>Bonus e malus</h3>
+    <div class="card"><table id="bonusTable"></table></div>
+    <h3>Parole chiave (+15 ciascuna)</h3>
+    <p class="muted" style="font-size:13.5px">Tutte prese dai titoli del programma. Valgono quando il relatore le pronuncia sul palco.</p>
+    <div class="words" id="wordList"></div>
+  </section>
+
+  <section id="v-arbitro" data-view="arbitro" hidden>
+    <h2>Pannello arbitro</h2>
+    <div id="refNo" class="note">Questa scheda è per gli arbitri. Per abilitarti apri il link arbitro che ti ha mandato chi organizza.</div>
+    <div id="refYes" hidden>
+      <label class="f" for="refSearch">Chi?</label>
+      <input type="search" id="refSearch" placeholder="Cerca il relatore">
+      <div class="card list results" id="refResults" style="margin-top:8px" hidden></div>
+      <div class="card sel" id="refSel" hidden style="margin-top:8px"></div>
+      <label class="f">Cosa è successo?</label>
+      <div class="bonusgrid" id="bonusGrid"></div>
+      <div id="wordWrap" hidden>
+        <label class="f" for="refWord">Quale parola?</label>
+        <select id="refWord"></select>
+      </div>
+      <div id="customWrap" hidden>
+        <label class="f" for="refPts">Punti (anche negativi)</label>
+        <input type="number" id="refPts" step="1" value="5">
+      </div>
+      <label class="f" for="refNote">Nota (facoltativa)</label>
+      <input type="text" id="refNote" maxlength="80" placeholder="Es. sala 6, ore 11.30">
+      <button class="btn pri" id="refGo" style="margin-top:12px;width:100%" disabled>Assegna</button>
+
+      <h3>Punti assegnati</h3>
+      <div class="card list feed" id="refFeed"><div class="empty">Nessun punto ancora.</div></div>
+
+
+      <h3>Aggiungi una persona fuori lista</h3>
+      <p class="muted" style="font-size:13.5px">Per esempio il vincitore di un voto poster che non è nel programma. Costa 10 Neuroni.</p>
+      <div class="split">
+        <input type="text" id="extraName" maxlength="40" placeholder="Es. G. Rossi" aria-label="Nome">
+        <input type="text" id="extraCity" maxlength="30" placeholder="Città" aria-label="Città">
+      </div>
+      <button class="btn" id="extraGo" style="margin-top:8px">Aggiungi alla lista</button>
+
+      <h3>Gestione</h3>
+      <label class="switch card" for="lockToggle"><input type="checkbox" id="lockToggle"> Blocca le squadre (nessuna modifica)</label>
+    </div>
+  </section>
+</div>
+
+<nav class="tabs" aria-label="Sezioni"><div class="in" id="tabsIn"></div></nav>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* Incolla qui la configurazione del tuo progetto Firebase (Impostazioni progetto → Le tue app → Web) */
+const FIREBASE_CONFIG = {
+  apiKey: "INCOLLA_QUI",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
+</script>
+<script>
+const ARTISTS_RAW = [["m-absinta-milano","M. Absinta","Milano",15,[[2,"12.00","R","Immunopatologia delle lesioni croniche attive, visualizzazione in vivo con MRI e loro rapporti con decorso clinico"],[2,"18.00","M","Il sistema glinfatico"]]],["f-agosta-milano","F. Agosta","Milano",20,[[0,"14.30","M","Le neuroimmagini nelle sindromi parkinsoniane: imaging avanzato e applicazioni nella pratica clinica"],[1,"15.00","M","Nuovi trattamenti per la malattia di alzheimer: siamo pronti al cambiamento"],[2,"17.40","R","Gli standard operativi nella gestione dei parametri RMN e delle ARIA in corso di trattamento con DMT"]]],["m-c-altavista-roma","M.C. Altavista","Roma",10,[[2,"17.00","M","Percorsi organizzativi nel trattamento con tossina botulinica di varie patologie"]]],["m-p-amato-firenze","M.P. Amato","Firenze",25,[[0,"11.00","M","Sclerosi multipla: dall’aggiornamento dei criteri diagnostici alla ridefinizione dei fenotipi e delle strategie terapeutiche"],[1,"15.00","M","Il vantaggio di ofatumumab nella sm: dal razionale immunologico all’evidenza di lungo termine"],[2,"16.00","M","Cladribina compresse e personalizzazione terapeutica: tra evidenze scientifiche e pratica clinica"],[3,"12.30","M","Ambiente, società e cervello: l’esposoma nelle malattie neurologiche"]]],["v-andreone-napoli","V. Andreone","Napoli",10,[[0,"14.30","M","Gestione delle malattie cerebrovascolari tra ospedale e territorio: modelli organizzativi, prevenzione e terapie innovative"]]],["e-antelmi-verona","E. Antelmi","Verona",10,[[3,"08.30","M","Sonno"]]],["a-antonini-padova","A. Antonini","Padova",10,[[0,"11.00","M","Terapie immunologiche nelle malattie neurodegenerative"]]],["g-arabia-catanzaro","G. Arabia","Catanzaro",10,[[0,"11.00","M","Le basi genetiche delle malattie neurodegenerative"]]],["a-arighi-milano","A. Arighi","Milano",20,[[0,"12.10","R","Digital biomarkers nei decadimenti cognitivi: rilevanza nella pratica clinica vs hype tecnologico"],[1,"15.30","R","Efficacia e sicurezza dall'esperienza dell'uso compassionevole"],[1,"18.30","R","Caso clinico disturbi cognitivi"]]],["c-a-artusi-verona","C.A. Artusi","Verona",10,[[1,"14.30","R","Omaveloxolone: una nuova luce sul beneficio a lungo termine tra studi clinici e real-world evidence"]]],["c-avolio-foggia","C. Avolio","Foggia",10,[[1,"08.30","M","Sclerosi multipla"]]],["s-bagnato-pergine-tn","S. Bagnato","Pergine - TN",10,[[0,"12.00","R","Neurostimolazione e neuromodulazione nei pazienti con disordini di coscienza prolungati"]]],["g-barbagallo-catania","G. Barbagallo","Catania",10,[[2,"11.00","M","Idrocefalo normoteso spectrum disorders"]]],["a-barbaglia-novara","A. Barbaglia","Novara",10,[[0,"19.00","R","Neuroscienze e musica: il cervello tra creazione, malattia e cura"]]],["p-barbanti-roma","P. Barbanti","Roma",10,[[1,"08.30","M","Cefalee"]]],["p-barone-salerno","P. Barone","Salerno",10,[[0,"11.00","M","Malattie infiammatorie del sistema nervoso"]]],["s-basilico-milano","S. Basilico","Milano",10,[[1,"17.00","R","Sintomi comportamentali e psicologici nella demenza"]]],["e-basso-rovigo","E. Basso","Rovigo",10,[[1,"15.20","R","Neurofibromi plessiformi associati a NF1: il ruolo della chirurgia nel percorso terapeutico"]]],["l-battistini-roma","L. Battistini","Roma",10,[[1,"15.00","R","Different by design: il giusto impatto immunologico del sottocute domiciliare"]]],["v-belcastro-lodi","V. Belcastro","Lodi",10,[[0,"11.00","M","Lo stato epilettico e le crisi sintomatiche acute"]]],["r-bella-catania","R. Bella","Catania",10,[[1,"18.00","M","La neurosonologia e la neuroradiologia in stroke unit: integrare e decidere"]]],["g-bellelli-milano","G. Bellelli","Milano",10,[[2,"14.50","R","Rafforzare la rete territoriale per la gestione della cronicità e della fragilità"]]],["l-bello-padova","L. Bello","Padova",10,[[1,"17.30","R","Caso clinico malattie neuromuscolari"]]],["g-bellomo-roma","G. Bellomo","Roma",10,[[0,"15.00","R","Dalla ricerca traslazionale alla pratica clinica: evoluzione delle tecnologie analitiche"]]],["d-belvisi-roma","D. Belvisi","Roma",10,[[2,"08.30","M","Disordini del movimento"]]],["a-r-bentivoglio-roma","A.R. Bentivoglio","Roma",10,[[1,"08.30","M","Disordini del movimento"]]],["a-benussi-trieste","A. Benussi","Trieste",15,[[1,"17.00","R","EEG network in Brain Health"],[2,"15.55","R","Time saved e beneficio cumulativo come outcome di trattamento"]]],["s-berlucchi-reggio-emilia","S. Berlucchi","Reggio Emilia",10,[[2,"11.30","R","Trattamento dell’idrocefalo normoteso: limiti e prospettive"]]],["v-bessi-firenze","V. Bessi","Firenze",15,[[0,"14.30","M","La nuova frontiera dei biomarcatori plasmatici in neurologia: integrazione tra laboratorio e clinica"],[2,"17.30","R","Prevenzione della malattia di Alzheimer"]]],["f-bisulli-bologna","F. Bisulli","Bologna",10,[[0,"11.00","R","Stato epilettico: aspetti elettro-clinici e classificazione"]]],["g-boffa-genova","G. Boffa","Genova",10,[[0,"14.30","R","Lesioni di origine infiammatoria"]]],["m-bologna-roma","M. Bologna","Roma",10,[[3,"08.30","M","Disordini del movimento"]]],["l-bonanni-chieti","L. Bonanni","Chieti",20,[[0,"11.00","M","Le basi genetiche delle malattie neurodegenerative"],[1,"18.00","R","La programmazione in Neurologia fra sanità digitale e territoriale"],[2,"14.00","M","La risonanza magnetica nell’era delle terapie anti-amiloide: il valore della collaborazione neurologo-neuroradiologo"]]],["e-bonanni-pisa","E. Bonanni","Pisa",10,[[2,"17.00","M","Sonno, ritmi circadiani e neuro-infiammazione"]]],["g-bonanomi-milano","G. Bonanomi","Milano",10,[[0,"11.10","R","Large Language Models: che cosa sono e come possono aiutare il neurologo"]]],["s-bonavita-napoli","S. Bonavita","Napoli",15,[[0,"11.00","M","Sclerosi multipla: dall’aggiornamento dei criteri diagnostici alla ridefinizione dei fenotipi e delle strategie terapeutiche"],[2,"15.00","M","Nuove frontiere in neurologia: il ruolo di selumetinib nella nf1 con neurofibromi plassiformi"]]],["b-bonetti-verona","B. Bonetti","Verona",10,[[1,"08.30","M","Demenza e invecchiamento"]]],["f-bono-catanzaro","F. Bono","Catanzaro",10,[[2,"17.00","M","Percorsi organizzativi nel trattamento con tossina botulinica di varie patologie"]]],["c-bonomi-roma","C. Bonomi","Roma",10,[[1,"18.20","R","Discussione"]]],["c-g-bonomi-roma","C.G. Bonomi","Roma",10,[[2,"08.30","M","Demenza e invecchiamento"]]],["b-borroni-brescia","B. Borroni","Brescia",15,[[0,"12.00","R","Anticorpi anti-tau e altre terapie disease-modifying nella degenerazione frontotemporale"],[1,"18.45","R","Dal laboratorio al paziente: stato dell’arte e prospettive applicative della stimolazione elettrica non invasiva"]]],["d-bosone-pavia","D. Bosone","Pavia",10,[[1,"16.02","R","Modelli di cura nella cronicità: focus sulla Sclerosi Multipla"]]],["g-bottini-pavia","G. Bottini","Pavia",10,[[1,"17.00","M","Sintomi neuropsicologici e psichiatrici nelle malattie neurologiche"]]],["s-bovino-firenze","S. Bovino","Firenze",10,[[1,"17.00","R","Caso clinico atassie"]]],["m-bozzali-torino","M. Bozzali","Torino",15,[[0,"11.00","R","Eleggibilità dei candidati agli anticorpi anti-amiloide nella malattia di Alzheimer: cosa fare e come farlo"],[2,"17.00","R","Integrazione fra parametri clinici, biomarcatori e neuroimaging nella stadiazione della Malattia di Alzheimer nell’era dei DMT"]]],["a-bozzao-roma","A. Bozzao","Roma",10,[[1,"18.40","R","Imaging neurodiologico integrato del circolo intracranico"]]],["v-brescia-morra-napoli","V. Brescia Morra","Napoli",10,[[1,"08.30","M","Sclerosi multipla"]]],["f-brighina-palermo","F. Brighina","Palermo",10,[[3,"09.30","M","Sistema nervoso vegetativo"]]],["j-buonocore-catanzaro","J. Buonocore","Catanzaro",10,[[3,"08.30","M","Disordini del movimento"]]],["a-cagnin-padova","A. Cagnin","Padova",30,[[0,"11.00","M","Terapie immunologiche nelle malattie neurodegenerative"],[2,"14.30","M","Ripensare l’organizzazione della presa in carico della malattia di alzheimer nell’era delle terapie innovative: il progetto rapid"],[2,"15.20","R","Discussione finale"],[2,"15.30","M","Alzheimer in fase iniziale: estendere il beneficio nel tempo nella nuova era delle terapie disease modifying"],[2,"17.00","M","Il percorso del paziente nelle fasi iniziali del declino cognitivo nell'era delle terapie \"disease modifying\""]]],["m-calabrese-verona","M. Calabrese","Verona",25,[[0,"11.30","R","Nuovi biomarcatori di imaging nel work-up diagnostico: CVS, PRL, nervo ottico e loro rilevanza clinica"],[0,"14.30","M","Alterazioni della sostanza bianca nelle diverse patologie del snc: oltre le categorie verso la diagnosi di malattia"],[1,"15.30","M","Ravulizumab in nmosd: oltre l’innovazione, il valore dell’esperienza clinica"],[2,"16.00","R","Oltre il controllo periferico: l’immunoricostituzione e la sfida dell’infiammazione centrale nella"]]],["p-calabresi-roma","P. Calabresi","Roma",15,[[1,"17.00","M","Attività motoria e riserva motoria nella malattia di parkinson e disordini del movimento"],[1,"18.00","R","Prevenzione e preservazione della salute del cervello"]]],["a-calvo-torino","A. Calvo","Torino",10,[[3,"08.30","M","Malattie del motoneurone"]]],["c-camarda-palermo","C. Camarda","Palermo",10,[[3,"08.30","M","Biomarcatori in neurologia"]]],["c-camilloni-milano","C. Camilloni","Milano",10,[[1,"18.00","R","Modulare la cascata amiloide con il campo elettrico: basi molecolari teoriche"]]],["p-candelaresi-napoli","P. Candelaresi","Napoli",10,[[0,"16.00","R","Le nuove frontiere nella terapia dell’ictus ischemico ed emorragico"]]],["a-cantisani-perugia","A. Cantisani","Perugia",10,[[1,"08.30","M","Neuroepidemiologia"]]],["s-capellari-bologna","S. Capellari","Bologna",10,[[3,"09.30","M","Malattie degenerative"]]],["m-a-capobianco-torino","M.A. Capobianco","Torino",15,[[1,"16.10","R","Proteggere il presente, preservare il futuro: ripensare la terapia nella prospettiva di stabilità clinica"],[2,"08.30","M","Biomarcatori in neurologia"]]],["f-caranci-napoli","F. Caranci","Napoli",10,[[0,"16.00","R","Lesioni ischemiche"]]],["c-carmassi-pisa","C. Carmassi","Pisa",10,[[2,"14.35","R","Depressione nel paziente SM: approccio multidisciplinare e ruolo dei farmaci"]]],["a-carotenuto-napoli","A. Carotenuto","Napoli",20,[[2,"13.05","R","Ponesimod e il sistema nervoso centrale: evidenze precliniche e razionale biologico"],[2,"13.50","R","Ublituximab a 7 anni: efficacia e sicurezza nel lungo termine"],[2,"18.30","R","Il sistema glinfatico nelle malattie neuroinfiammatorie del sistema nervoso centrale"]]],["a-castagna-milano","A. Castagna","Milano",15,[[1,"18.00","R","Ruolo della riserva motoria nei disturbi del movimento"],[2,"17.00","R","Percorso organizzativo per le distonie"]]],["p-cavalla-torino","P. Cavalla","Torino",10,[[2,"08.30","M","Sclerosi multipla"]]],["d-centonze-roma","D. Centonze","Roma",25,[[0,"11.00","M","Malattie infiammatorie del sistema nervoso"],[2,"12.00","M","Basi biologiche e terapia della progressione di invalidità nella sclerosi multipla e nelle malattie"],[2,"13.30","M","Gestione olistica della sclerosi multipla: il ruolo di ublituximab come terapia ad alta efficacia e la gestione multidisciplinare delle comorbidità e sintomi associati"],[2,"17.00","R","SM e ageing: impatto della neurodegenerazione e opportunità con cladribina compresse"]]],["r-ceravolo-pisa","R. Ceravolo","Pisa",10,[[0,"14.30","R","Imaging del sistema nigro-striatale: scintigrafia cerebrale e RM ad alto campo"]]],["e-cerulli-irelli-roma","E. Cerulli Irelli","Roma",10,[[1,"17.30","R","Le epilessie rare e complesse"]]],["s-cevoli-bologna","S. Cevoli","Bologna",10,[[1,"17.20","R","Dall’aura all’ischemia cerebrale: ipotesi di un continuum fisiopatologico"]]],["a-chio-torino","A. Chiò","Torino",30,[[0,"14.30","M","La nuova frontiera dei biomarcatori plasmatici in neurologia: integrazione tra laboratorio e clinica"],[1,"15.00","M","Sla – sod1: una nuova era terapeutica tra innovazione scientifica e pratica clinica"],[1,"15.00","R","Benvenuto e introduzione"],[1,"15.45","R","In che modo la medicina di precisione sta trasformando il management della SLA?"],[2,"17.00","M","Sla: i nodi ancora irrisolti della malattia"]]],["c-g-chisari-catania","C.G. Chisari","Catania",10,[[1,"17.00","M","La sfida della transizione nelle malattie rare con particolare riguardo ai modelli gestionali e alle terapie, da quelle comuni alle terapie più avanzate"]]],["c-chisari-catania","C. Chisari","Catania",10,[[2,"13.35","R","Ublituximab in pratica clinica: selezione del paziente, gestione e follow up"]]],["m-ciaccio-palermo","M. Ciaccio","Palermo",15,[[0,"14.30","M","La nuova frontiera dei biomarcatori plasmatici in neurologia: integrazione tra laboratorio e clinica"],[1,"16.00","M","Il ruolo dei biomarcatori plasmatici nella malattia di alzheimer: accuratezza, semplicità e sostenibilità"]]],["v-cianci-reggio-calabria","V. Cianci","Reggio Calabria",10,[[2,"08.30","M","Epilessia"]]],["c-e-cicero-catania","C.E. Cicero","Catania",10,[[1,"17.00","R","Donne ed epilessia: la difficile gestione nelle aree rurali dei paesi a risorse limitate"]]],["m-cincotta-firenze","M. Cincotta","Firenze",10,[[2,"08.30","M","Dolore"]]],["m-clerico-torino","M. Clerico","Torino",15,[[2,"","R","- 17.00 Pausa caffè"],[2,"15.50","R","Hit-the-ground-running: la necessità di un trattamento precoce in gMG"]]],["e-cocco-cagliari","E. Cocco","Cagliari",25,[[1,"14.10","R","L’innovazione che trasforma il percorso: l'impatto di Ocrelizumab"],[1,"15.30","M","Ravulizumab in nmosd: oltre l’innovazione, il valore dell’esperienza clinica"],[1,"18.00","R","Caso clinico malattie demielinizzanti SNC"],[2,"18.00","M","Immunosenescenza nella sclerosi multipla: ripensare la gestione terapeutica nel lungo termine"]]],["s-colnaghi-pavia","S. Colnaghi","Pavia",10,[[2,"18.40","R","Applicazione nelle demenze"]]],["c-colosimo-bari","C. Colosimo","Bari",10,[[1,"08.30","M","Disordini del movimento"]]],["g-p-comi-milano","G.P. Comi","Milano",10,[[1,"18.00","R","Nuove strategie di terapia genica AAV mediata"]]],["g-constantin-verona","G. Constantin","Verona",15,[[0,"11.00","M","Malattie infiammatorie del sistema nervoso"],[0,"14.30","R","Meccanismi del danno nervoso prodotto dagli auto-anticorpi"]]],["a-conte-roma","A. Conte","Roma",25,[[0,"11.00","M","La rivoluzione digitale in neurologia"],[0,"13.10","R","Conclusioni"],[1,"16.00","M","Più autonomia, più sostenibilità: la nuova gestione della sclerosi multipla con natalizumab"],[1,"16.00","R","Introduzione e obiettivi del simposio"]]],["g-coppola-roma","G. Coppola","Roma",10,[[1,"17.00","M","L’aura emicranica: caratteristiche cliniche, fisiopatologiche e diagnostica differenziale"]]],["m-corbetta-padova","M. Corbetta","Padova",10,[[0,"11.00","M","Gestione del paziente con disturbi di coscienza"]]],["f-m-corsi-roma","F.M. Corsi","Roma",10,[[1,"17.40","R","Teleneurologia euroafricana: 10 anni di esperienza"]]],["p-cortelli-bologna","P. Cortelli","Bologna",10,[[2,"11.00","M","Idrocefalo normoteso spectrum disorders"]]],["s-corti-milano","S. Corti","Milano",10,[[3,"11.30","R","Le terapie basate sul gene editing e l’RNA"]]],["g-cosentino-pavia","G. Cosentino","Pavia",10,[[2,"17.20","R","Valutazione strumentale della deglutizione: correlati fisiopatologici e implicazioni cliniche"]]],["g-cossu-cagliari","G. Cossu","Cagliari",10,[[2,"17.00","M","La neurologia che cambia: reti per l'urgenza, sostenibilità e nuovi assetti organizzativi"]]],["c-cupidi-palermo","C. Cupidi","Palermo",10,[[1,"08.30","M","Demenza e invecchiamento"]]],["v-damato-firenze","V. Damato","Firenze",20,[[0,"12.30","R","Diagnosi differenziale delle Encefaliti autoimmuni"],[1,"15.00","M","Dall’evidenza al valore:"],[2,"","R","- 17.00 Pausa caffè"]]],["e-damico-foggia","E. D’amico","Foggia",15,[[1,"","R","- 17.00 Pausa caffè"],[2,"15.20","R","Stratificazione e terapia: profili di paziente e definizione di obiettivi terapeutici personalizzati"]]],["f-dantonio-roma","F. D’antonio","Roma",10,[[1,"17.30","R","Psicosi nelle malattie neurodegenerative"]]],["r-de-icco-pavia","R. De Icco","Pavia",10,[[0,"12.30","R","Gli approcci terapeutici alternativi, farmacologici e non"]]],["f-de-marchi-novara","F. De Marchi","Novara",10,[[2,"17.45","R","Come cambiare davvero la storia naturale della SLA? Strategie per una nuova generazione di studi clinici"]]],["b-de-martini-milano","B. De Martini","Milano",10,[[2,"18.20","R","Disturbi neurologici funzionali e comorbidità psichiatrica"]]],["a-de-mase-napoli","A. De Mase","Napoli",10,[[0,"15.30","R","Le complicanze cerebrovascolari derivanti da terapie per patologie non neurologiche"]]],["r-de-micco-napoli","R. De Micco","Napoli",20,[[0,"15.30","R","Risonanza Magnetica funzionale e Connettomica nella malattia di Parkinson"],[2,"14.00","R","Stabilizzare i livelli di levodopa grazie all’inibizione enzimatica"],[2,"17.00","R","Malattia di Parkinson"]]],["n-de-rossi-brescia","N. De Rossi","Brescia",20,[[1,"16.14","R","Personalizzazione del trattamento con Natalizumab SC: valore per il paziente e impatto organizzativo"],[1,"17.00","M","Natalizumab nella rrms attiva: 20 anni di esperienza tra elevata efficacia, profilo di sicurezza consolidato e impatto clinico duraturo"],[1,"17.30","R","Impatto clinico e stabilità nel tempo della terapia con Natalizumab: 20 anni che hanno cambiato la storia della RRMS"]]],["n-de-stefano-siena","N. De Stefano","Siena",25,[[1,"14.30","M","Uno sguardo all’orizzonte: nel trattamento della"],[1,"17.00","M","Salute del cervello: definizione biologica e strategie preventive"],[2,"12.00","M","Basi biologiche e terapia della progressione di invalidità nella sclerosi multipla e nelle malattie"],[2,"17.30","M","Sclerosi multipla e approccio terapeutico in uno scenario in continua evoluzione"]]],["m-de-tommaso-bari","M. De Tommaso","Bari",10,[[1,"17.40","R","Cosa ci hanno insegnato i farmaci specifici per l’emicrania sull’aura"]]],["g-defazio-bari","G. Defazio","Bari",10,[[0,"11.00","M","Le basi genetiche delle malattie neurodegenerative"]]],["c-di-bonaventura-roma","C. Di Bonaventura","Roma",10,[[2,"08.30","M","Epilessia"]]],["g-di-fede-milano","G. Di Fede","Milano",10,[[1,"18.15","R","Modulare la cascata amiloide con il campo elettrico: evidenze biopatologiche su tessuto cerebrale"]]],["m-di-filippo-perugia","M. Di Filippo","Perugia",20,[[0,"15.00","R","Meccanismi biologici alla base della progressione e della disabilità nella Sclerosi Multipla"],[2,"15.00","R","Patofisiologia della smoldering: ruolo della microglia e manifestazioni multidimensionali"],[2,"16.00","M","Time is nerve il valore del tempo nella neuroimmunologia moderna"]]],["a-di-fonzo-milano","A. Di Fonzo","Milano",15,[[0,"15.30","R","Nuovi target terapeutici nei disordini del movimento su base genetica"],[1,"09.30","M","Neurogenetica e malattie rare"]]],["g-di-lazzaro-roma","G. Di Lazzaro","Roma",10,[[1,"17.30","R","Attività motoria e malattia di Parkinson: clinica, marcatori molecolari e plasticità sinaptica"]]],["v-di-lazzaro-roma","V. Di Lazzaro","Roma",10,[[2,"18.00","R","TUS e neuromodulazione"]]],["a-di-sapio-torino","A. Di Sapio","Torino",10,[[2,"16.30","M","Nfl e gfap nella pratica clinica neurologica"]]],["v-di-stefano-palermo","V. Di Stefano","Palermo",15,[[1,"15.00","R","Oltre i trial: come le RWE stanno orientando le decisioni in gMG Zilucoplan nelle RWE: update e sostenibilità nella pratica clinica"],[2,"16.10","R","Da avanguardia terapeutica a pratica clinica: Ravulizumab nelle raccomandazioni italiane 2026 per la diagnosi e il trattamento della Miastenia Gravis"]]],["a-l-di-stefano-livorno","A.L. Di Stefano","Livorno",10,[[2,"18.00","R","Stato dell’arte dei target molecolari e nuove strategie terapeutiche nei gliomi Gliomi high grade"]]],["i-di-vico-verona","I. Di Vico","Verona",10,[[2,"18.40","R","Comunicazione della diagnosi e trattamento"]]],["m-diomedi-roma","M. Diomedi","Roma",10,[[0,"15.00","R","Malattia cardio-cerebrovascolare: fattori di rischio e prevenzione primaria"]]],["v-donadio-bologna","V. Donadio","Bologna",10,[[1,"08.30","M","Neuropatie"]]],["g-dorsi-san-giovanni-rotondo-fg","G. D’orsi","San Giovanni Rotondo - FG",10,[[0,"11.30","R","Stato epilettico non convulsivo: le insidie della diagnosi differenziale"]]],["r-dubbioso-napoli","R. Dubbioso","Napoli",10,[[2,"17.30","R","Biomarcatori nella SLA: tra significato biologico e utilità clinica"]]],["p-e-doneddu-milano","P. E Doneddu","Milano",10,[[2,"16.00","R","NEDA o UDA nella CIDP?"]]],["e-eleopra-milano","E. Eleopra","Milano",10,[[2,"17.00","R","MRgFUS: passato, presente e futuro"]]],["m-eoli-milano","M. Eoli","Milano",10,[[1,"15.40","R","Nuovi approcci nella gestione dei neurofibromi plessiformi associati a"]]],["c-erra-napoli","C. Erra","Napoli",10,[[1,"14.20","R","Con quali strumenti riconosciamo l’attività di malattia"]]],["r-erro-salerno","R. Erro","Salerno",10,[[2,"18.00","R","Disturbi neurologici funzionali e comorbidità neurologica"]]],["a-estraneo-napoli","A. Estraneo","Napoli",10,[[0,"11.00","R","Modelli prognostici predittivi per i pazienti con disordini di coscienza protratti"]]],["g-fabbrini-roma","G. Fabbrini","Roma",10,[[0,"14.30","M","Le neuroimmagini nelle sindromi parkinsoniane: imaging avanzato e applicazioni nella pratica clinica"]]],["y-m-falzone-milano","Y.M. Falzone","Milano",10,[[2,"15.30","R","Crisi miastenica e ospedalizzazione: il valore di un intervento tempestivo"]]],["l-ferini-strambi-milano","L. Ferini Strambi","Milano",10,[[1,"16.00","M","Insonnia, neurotrasmettitori e scelte terapeutiche: eszopiclone nella pratica clinica neurologica"]]],["e-ferlazzo-catanzaro","E. Ferlazzo","Catanzaro",10,[[3,"08.30","M","Epilessia"]]],["c-ferrari-firenze","C. Ferrari","Firenze",10,[[0,"16.00","R","Terapie innovative nelle atassie genetiche"]]],["s-ferrari-verona","S. Ferrari","Verona",10,[[1,"17.30","R","Clinica e assessment diagnostico strumentale"]]],["d-ferraro-modena","D. Ferraro","Modena",15,[[1,"16.26","R","La cura della SM oltre l'ospedale: flessibilità, continuità, sostenibilità"],[3,"08.30","M","Sclerosi multipla"]]],["g-ferrazzano-roma","G. Ferrazzano","Roma",10,[[2,"","R","- 17.00 Pausa caffè"]]],["m-filippi-milano","M. Filippi","Milano",20,[[0,"11.00","M","Sclerosi multipla: dall’aggiornamento dei criteri diagnostici alla ridefinizione dei fenotipi e delle strategie terapeutiche"],[1,"13.30","M","Ocrelizumab nella sm: l’efficacia del trattamento precoce e l’impatto della formulazione sottocute"],[2,"","R","Disturbi del sonno e dei ritmi circadiani: impatto clinico sul sistema immunitario"]]],["m-filosto-brescia","M. Filosto","Brescia",10,[[1,"18.00","R","Le malattie neuromuscolari"]]],["c-finocchi-savona","C. Finocchi","Savona",10,[[1,"19.00","R","Il futuro della Neurologia Italiana dopo il DM 77: Numeri e Bisogni"]]],["l-fionda-roma","L. Fionda","Roma",10,[[1,"15.00","M","Dall’evidenza al valore:"]]],["g-fiume-messina","G. Fiume","Messina",10,[[2,"09.30","M","Riabilitazione neurologica"]]],["r-formisano-roma","R. Formisano","Roma",10,[[1,"11.30","R","Neuroriabilitazione e multidisciplinarietà"]]],["d-fornasari-milano","D. Fornasari","Milano",10,[[1,"14.30","R","Associazione memantina/donepezil: razionale neurobiologico e valore della sinergia farmacologica"]]],["r-furlan-milano","R. Furlan","Milano",10,[[0,"15.00","R","La diagnostica di laboratorio nelle malattie neurologiche mediate da auto-anticorpi"]]],["l-gaetani-perugia","L. Gaetani","Perugia",15,[[0,"15.30","R","Biomarcatori fluidi e decision making clinico: costruzione di algoritmi diagnostici innovativi"],[1,"","R","- 17.00 Pausa caffè"]]],["a-gajofatto-verona","A. Gajofatto","Verona",10,[[1,"08.30","M","Neuroepidemiologia"]]],["g-galassi-siena","G. Galassi","Siena",10,[[1,"18.30","R","Caso clinico disturbi cognitivi"]]],["g-galvano-catania","G. Galvano","Catania",10,[[1,"18.00","M","La neurosonologia e la neuroradiologia in stroke unit: integrare e decidere"]]],["a-gambardella-catanzaro","A. Gambardella","Catanzaro",10,[[0,"11.00","M","Lo stato epilettico e le crisi sintomatiche acute"]]],["m-l-gandolfi-verona","M.L. Gandolfi","Verona",10,[[2,"18.00","M","Disturbi neurologici funzionali: comorbidità neurologica e psichiatrica"]]],["c-gasperini-roma","C. Gasperini","Roma",25,[[1,"12.30","M","Gender gap e vulnerabilità neurologica: basi biologiche e implicazioni per la terapia"],[1,"14.00","M","Time is brain: un concetto chiave anche in epilessia. neurologo ed epilettologo a confronto per la gestione di scenari clinici comuni"],[1,"18.00","M","Il progetto neuronetwork e le asimmetrie del sistema sanitario: regioni a confronto"],[2,"16.00","M","Cladribina compresse e personalizzazione terapeutica: tra evidenze scientifiche e pratica clinica"]]],["v-gatta-chieti","V. Gatta","Chieti",10,[[0,"11.00","R","Genetica delle malattie neurodegenerative: modelli di ereditarietà e variabilità genetica"]]],["s-gaudino-roma","S. Gaudino","Roma",10,[[0,"15.30","R","Lesioni di origine neoplastica"]]],["s-gerevini-bergamo","S. Gerevini","Bergamo",10,[[0,"15.00","R","Lesioni di origine infettiva"]]],["g-giacomucci-firenze","G. Giacomucci","Firenze",10,[[2,"08.30","M","Biomarcatori in neurologia"]]],["g-giannini-bologna","G. Giannini","Bologna",10,[[3,"09.30","M","Sistema nervoso vegetativo"]]],["m-p-giannoccaro-bologna","M.P. Giannoccaro","Bologna",10,[[0,"11.30","R","Neuromiotonia e neuropatia delle piccole fibre"]]],["b-giometto-trento","B. Giometto","Trento",10,[[2,"08.30","M","Neuroimmunologia e neuroinfettivologia"]]],["r-greco-milano","R. Greco","Milano",10,[[3,"12.00","R","L’Immunoterapia con cellule CAR-T"]]],["p-grillo-pavia","P. Grillo","Pavia",10,[[1,"17.00","R","Aspetti biochimici dell’esercizio fisico intenso nella malattia di Parkinson"]]],["c-guariglia-roma","C. Guariglia","Roma",10,[[1,"08.30","M","Neuropsicologia clinica - cognitivo comportamentale"]]],["f-habetswallner-napoli","F. Habetswallner","Napoli",10,[[2,"14.00","M","Il potenziale di nipocalimab nella miastenia gravis: dalle evidenze cliniche alle prospettive di utilizzo"]]],["p-iaffaldano-bari","P. Iaffaldano","Bari",10,[[2,"15.30","M","Nella sclerosi multipla: analogie e differenze nella pratica clinica"]]],["m-inglese-genova","M. Inglese","Genova",25,[[0,"14.30","M","Alterazioni della sostanza bianca nelle diverse patologie del snc: oltre le categorie verso la diagnosi di malattia"],[1,"15.20","R","Efficacia e sicurezza nel lungo termine: l’evidenza di Ofatumumab fino a 8 anni"],[2,"13.30","M","Gestione olistica della sclerosi multipla: il ruolo di ublituximab come terapia ad alta efficacia e la gestione multidisciplinare delle comorbidità e sintomi associati"],[2,"18.20","R","Imaging e senescenza nella Sclerosi Multipla"]]],["r-iorio-roma","R. Iorio","Roma",15,[[0,"11.00","R","Malattie da auto-anticorpi del SNP e della placca neuromuscolare"],[1,"14.40","R","Quando e come l’attività di malattia cambia la decisione terapeutica?"]]],["a-labate-palermo","A. Labate","Palermo",15,[[0,"11.00","M","Lo stato epilettico e le crisi sintomatiche acute"],[2,"","R","- 17.00 Pausa caffè"]]],["c-lanni-pavia","C. Lanni","Pavia",10,[[2,"18.00","R","Oltre la barriera emato-encefalica: basi biologiche e strutturali del sistema glinfatico"]]],["r-lanzillo-napoli","R. Lanzillo","Napoli",20,[[1,"13.30","R","Ocrelizumab in Real World: efficacia e safety consolidate"],[2,"16.40","R","Sequencing e safety switch: considerazioni per i pazienti e sfide cliniche"],[3,"08.30","M","Neuroimmunologia"]]],["a-laroni-genova","A. Laroni","Genova",10,[[2,"08.30","M","Neuroimmunologia e neuroinfettivologia"]]],["g-lauria-pinter-milano","G. Lauria Pinter","Milano",10,[[0,"14.30","M","Le nuove terapie nelle malattie neuromuscolari: dai dati reali alle prospettive di sviluppo"]]],["l-lavorgna-napoli","L. Lavorgna","Napoli",25,[[0,"11.00","M","La rivoluzione digitale in neurologia"],[0,"11.00","R","Introduzione: La rivoluzione digitale in neurologia"],[0,"13.10","R","Conclusioni"],[1,"14.00","M","Nuove prospettive nella definizione dell’attività di malattia nella miastenia"]]],["l-leocani-milano","L. Leocani","Milano",10,[[3,"08.30","M","Neurofisiologia clinica"]]],["m-leonardi-milano","M. Leonardi","Milano",10,[[0,"11.00","M","Gestione del paziente con disturbi di coscienza"]]],["m-leone-milano","M. Leone","Milano",10,[[1,"17.00","M","L'attività della sin nei paesi a basso reddito"]]],["c-leoni-roma","C. Leoni","Roma",15,[[1,"15.00","R","Gestione olistica del paziente con NF1 nella transizione dall’adolescenza all’età adulta"],[2,"","R","- 17.00 Pausa caffè"]]],["r-liguori-bologna","R. Liguori","Bologna",10,[[0,"11.00","M","Malattie infiammatorie del sistema nervoso"]]],["c-liguori-roma","C. Liguori","Roma",20,[[1,"","R","- 17.00 Pausa caffè"],[2,"","R","- 17.00 Pausa caffè"],[2,"18.00","R","Disturbi del sonno e dei ritmi circadiani: impatto clinico sul sistema immunitario"]]],["d-lilleri-pavia","D. Lilleri","Pavia",10,[[1,"18.00","R","Indagini di laboratorio su siero e liquor"]]],["e-lo-re-palermo","E. Lo Re","Palermo",10,[[0,"12.30","R","Disordini di coscienza in patologie critiche: coinvolgimento del neurologo nelle terapie intensive per patologie non neurologiche"]]],["g-logroscino-bari","G. Logroscino","Bari",10,[[2,"17.20","R","Organizzazione assistenziale territorio-ospedale nelle fasi iniziali del deterioramento cognitivo"]]],["l-lopiano-torino","L. Lopiano","Torino",10,[[3,"12.30","M","Ambiente, società e cervello: l’esposoma nelle malattie neurologiche"]]],["s-loprieno-pisa","S. Loprieno","Pisa",10,[[1,"18.00","R","Caso clinico malattie demielinizzanti SNC"]]],["l-lorefice-cagliari","L. Lorefice","Cagliari",15,[[0,"12.30","R","Forme pediatriche e ad esordio tardivo: peculiarità e scenari clinici"],[2,"17.40","R","Malattie demielinizzanti"]]],["a-luca-enna","A. Luca","Enna",10,[[1,"17.00","M","Sintomi neuropsicologici e psichiatrici nelle malattie neurologiche"]]],["g-lucchese-lecce","G. Lucchese","Lecce",10,[[1,"08.30","M","Neuropsicologia clinica - cognitivo comportamentale"]]],["m-luigetti-roma","M. Luigetti","Roma",15,[[2,"14.00","M","Oltre il silenziamento: la nuova generazione aso nell’attrv-pn"],[2,"16.30","R","Dalla gestione reattiva all’intercettazione del rischio"]]],["s-luzzi-ancona","S. Luzzi","Ancona",10,[[2,"18.00","R","Gli outcome cognitivi nei DMT: differenze fra clinical trial e real life"]]],["g-madeo-rimini","G. Madeo","Rimini",10,[[1,"18.00","M","Neuromodulazione nelle patologie neurologiche da misfolding proteico: stimolazione elettrica tra meccanismi molecolari e prospettive cliniche"]]],["m-maestri-tassoni-pisa","M. Maestri Tassoni","Pisa",10,[[2,"15.30","M","Battere il tempo in miastenia gravis: riconoscere, intervenire, anticipare con ravulizumab"]]],["e-maida-napoli","E. Maida","Napoli",10,[[0,"11.40","R","Televisita, teleconsulto e telemonitoraggio in neurologia: chi e quando"]]],["j-mandrioli-modena","J. Mandrioli","Modena",20,[[0,"15.00","R","SLA. Limiti degli attuali trial: cosa dobbiamo cambiare?"],[1,"16.00","M","Gestione del trattamento del paziente con sla"],[2,"17.00","M","Sla: i nodi ancora irrisolti della malattia"]]],["f-manganelli-napoli","F. Manganelli","Napoli",10,[[0,"11.00","M","Malattie infiammatorie del sistema nervoso"]]],["p-manganotti-trieste","P. Manganotti","Trieste",10,[[3,"08.30","M","Neurofisiologia clinica"]]],["g-maniscalco-napoli","G. Maniscalco","Napoli",15,[[1,"15.30","R","Quando il tempo conta: l’importanza di un trattamento precoce nel paziente severo"],[1,"19.00","R","Quando non è SM: diagnosi differenziale delle “better explanation”"]]],["m-marano-roma","M. Marano","Roma",10,[[2,"17.20","R","Percorso organizzativo per la spasticità post-stroke"]]],["e-marcello-milano","E. Marcello","Milano",10,[[2,"15.30","R","Le protofibrille come driver del danno sinaptico precoce, le placche come carico patologico"]]],["e-marchioni-pavia","E. Marchioni","Pavia",10,[[1,"17.00","M","Virus neurotropi emergenti"]]],["r-marconi-grosseto","R. Marconi","Grosseto",10,[[2,"08.30","M","Demenza e invecchiamento"]]],["g-marfia-roma","G. Marfia","Roma",15,[[2,"15.00","M","Non più invisibile: identificare e agire contro la neuroinfiammazione smoldering"],[3,"08.30","M","Sclerosi multipla"]]],["m-margoni-milano","M. Margoni","Milano",10,[[0,"12.00","R","Sindromi radiologicamente isolate ed esordi atipici: complessità diagnostica e scenari clinici"]]],["s-marino-messina","S. Marino","Messina",15,[[2,"17.00","M","Nei disturbi neurologici"],[2,"17.40","R","MRgFUS e dolore neuropatico"]]],["a-mariottini-firenze","A. Mariottini","Firenze",10,[[1,"18.00","R","Criteri diagnostici delle sindromi demielinizzanti del SNC: accuratezza e limiti delle manifestazioni tipiche ed atipiche"]]],["s-mariotto-verona","S. Mariotto","Verona",15,[[0,"15.30","R","Malattie da auto-anticorpi del SNC"],[1,"17.00","M","Virus neurotropi emergenti"]]],["c-marra-roma","C. Marra","Roma",10,[[0,"15.00","R","Terapie innovative e trial clinici nelle demenze su base genetica"]]],["a-martinuzzi-torino","A. Martinuzzi","Torino",15,[[1,"14.00","M","Atassia di friedreich: illuminare una nuova prospettiva nel trattamento"],[1,"14.00","R","Benvenuto & Introduzione"]]],["a-martorana-roma","A. Martorana","Roma",10,[[1,"14.00","M","Demenza e alzheimer oltre la monoterapia e i monoclonali"]]],["f-massa-genova","F. Massa","Genova",10,[[1,"15.00","R","Efficacia e sicurezza degli ATT: il valore del tempo guadagnato"]]],["r-massa-roma","R. Massa","Roma",10,[[1,"17.00","R","Distrofia miotonica di tipo"]]],["l-massacesi-firenze","L. Massacesi","Firenze",15,[[1,"18.00","M","Sindromi demielinizzanti del snc: non solo sclerosi multipla"],[2,"12.30","R","Strategie terapeutiche per sopprimere la progressione d’invalidità in assenza di ricadute"]]],["g-matarese-napoli","G. Matarese","Napoli",10,[[2,"18.00","R","Il contributo dei meccanismi di immunosenescenza alla patogenesi nelle diverse fasi della Sclerosi Multipla"]]],["m-maturo-firenze","M. Maturo","Firenze",10,[[1,"17.30","R","Caso clinico malattie neuromuscolari"]]],["a-mazzeo-messina","A. Mazzeo","Messina",10,[[1,"08.30","M","Neuropatie"]]],["d-medici-bologna","D. Medici","Bologna",10,[[3,"08.30","M","Malattie del motoneurone"]]],["s-meletti-parma","S. Meletti","Parma",10,[[0,"12.00","R","Approccio terapeutico e fattori prognostici"]]],["g-merlino-messina","G. Merlino","Messina",10,[[3,"08.30","M","Malattie cerebrovascolari"]]],["s-messina-messina","S. Messina","Messina",10,[[2,"08.30","M","Malattie neuromuscolari"]]],["r-moavero-roma","R. Moavero","Roma",10,[[1,"17.00","R","La Sclerosi Tuberosa"]]],["m-moccia-napoli","M. Moccia","Napoli",20,[[1,"15.40","R","Fattori prognostici e cambio di paradigma terapeutico nella SM: dalla teoria alla pratica"],[2,"","R","- 17.00 Pausa caffè"],[3,"08.30","M","Sclerosi multipla"]]],["c-moglia-torino","C. Moglia","Torino",10,[[0,"14.30","M","Le nuove terapie nelle malattie neuromuscolari: dai dati reali alle prospettive di sviluppo"]]],["t-mongini-torino","T. Mongini","Torino",10,[[1,"17.00","M","Terapie innovative per malattie neuromuscolari con interessamento del sistema nervoso centrale"]]],["a-morano-roma","A. Morano","Roma",10,[[0,"12.30","R","Crisi sintomatiche acute in setting di emergenza/urgenza"]]],["s-morbelli-torino","S. Morbelli","Torino",10,[[0,"16.00","R","PET e Imaging Molecolare: nuove frontiere tra presente e futuro"]]],["b-mostacci-bologna","B. Mostacci","Bologna",10,[[2,"17.20","R","Epilessia"]]],["g-mostile-catania","G. Mostile","Catania",15,[[2,"11.00","R","La variabilità clinica dell’idrocefalo normoteso"],[2,"18.20","R","Applicazione nei Disturbi del Movimento"]]],["g-musso-padova","G. Musso","Padova",10,[[0,"14.30","R","Fase preanalitica e qualità del campione: fondamenti per biomarcatori affidabili"]]],["o-musumeci-messina","O. Musumeci","Messina",10,[[1,"17.20","R","Encefalomiopatie mitocondriali"]]],["b-nacmias-firenze","B. Nacmias","Firenze",10,[[1,"09.30","M","Neurogenetica e malattie rare"]]],["e-nicastri-roma","E. Nicastri","Roma",10,[[1,"17.00","R","Diffusione dei virus emergenti e distribuzione dei cluster epidemici in Italia"]]],["a-nicoletti-catania","A. Nicoletti","Catania",15,[[1,"17.00","M","L'attività della sin nei paesi a basso reddito"],[3,"13.00","R","Malattia di Parkinson"]]],["v-nigro-napoli","V. Nigro","Napoli",10,[[0,"14.30","M","Le nuove terapie nelle malattie neuromuscolari: dai dati reali alle prospettive di sviluppo"]]],["r-nistico-catanzaro","R. Nisticò","Catanzaro",10,[[2,"08.30","M","Dolore"]]],["l-nobili-genova","L. Nobili","Genova",10,[[2,"17.00","M","Sonno, ritmi circadiani e neuro-infiammazione"]]],["a-nuredini-modena","A. Nuredini","Modena",10,[[1,"18.20","R","Discussione"]]],["r-ornello-laquila","R. Ornello","L’Aquila",10,[[2,"18.45","R","Il ruolo del sistema glinfatico nel sonno e nell'emicrania"]]],["a-pace-roma","A. Pace","Roma",10,[[3,"09.30","M","Neuro-oncologia"]]],["a-padovani-brescia","A. Padovani","Brescia",25,[[1,"11.30","M","Nuove prospettive in neurologia"],[1,"14.00","R","Dalla monoterapia alla strategia integrata: perché oggi parlare di associazione?"],[1,"17.00","M","Salute del cervello: definizione biologica e strategie preventive"],[2,"14.35","R","Overview e risultati del progetto RAPID: costruire una rete clinica efficace per l’identificazione precoce e l’accesso all’innovazione"]]],["p-palumbo-prato","P. Palumbo","Prato",10,[[2,"09.30","M","Riabilitazione neurologica"]]],["l-pantoni-milano","L. Pantoni","Milano",10,[[3,"08.30","M","Malattie cerebrovascolari"]]],["d-paolicelli-bari","D. Paolicelli","Bari",15,[[1,"13.30","M","Ocrelizumab nella sm: l’efficacia del trattamento precoce e l’impatto della formulazione sottocute"],[1,"15.00","M","Il vantaggio di ofatumumab nella sm: dal razionale immunologico all’evidenza di lungo termine"]]],["p-parchi-bologna","P. Parchi","Bologna",10,[[1,"08.30","M","Biomarcatori in neurologia"]]],["l-parnetti-perugia","L. Parnetti","Perugia",10,[[2,"17.00","M","La prevenzione primaria nelle malattie neurodegenerative: mito o realtà possibile?"]]],["f-patti-catania","F. Patti","Catania",15,[[0,"11.00","M","Sclerosi multipla: dall’aggiornamento dei criteri diagnostici alla ridefinizione dei fenotipi e delle strategie terapeutiche"],[1,"15.00","M","Approcci innovativi alla gestione di neurofibromi plessiformi associati a neurofibromatosi di tipo"]]],["e-pegoraro-padova","E. Pegoraro","Padova",15,[[0,"16.00","R","Distrofie muscolari. Lessons learned con le terapie innovative e nuove strategie terapeutiche"],[2,"15.30","M","Battere il tempo in miastenia gravis: riconoscere, intervenire, anticipare con ravulizumab"]]],["m-t-pellecchia-salerno","M.T. Pellecchia","Salerno",15,[[0,"11.00","M","Le basi genetiche delle malattie neurodegenerative"],[2,"","R","- 17.00 Pausa caffè"]]],["p-perini-padova","P. Perini","Padova",25,[[0,"16.00","R","Strategie terapeutiche lungo il continuum di malattia: approcci terapeutici attuali e nuove strategie emergenti"],[1,"13.50","R","Alta efficacia in prima linea: qual è il beneficio differenziante di Ocrelizumab?"],[1,"17.00","M","Natalizumab nella rrms attiva: 20 anni di esperienza tra elevata efficacia, profilo di sicurezza consolidato e impatto clinico duraturo"],[1,"17.00","R","Impatto di Natalizumab sul rischio PIRA nella popolazione adulta e pediatrica"]]],["f-r-pezzella-roma","F.R. Pezzella","Roma",10,[[0,"14.30","R","Rete ictus: i modelli organizzativi Regionali e le interazioni Territorio- Ospedale- Territorio"]]],["m-picillo-salerno","M. Picillo","Salerno",15,[[1,"13.00","R","Neurologia di genere: come le differenze di sesso influenzano fenotipo clinico e risposta alle terapie"],[2,"17.00","M","Management di malattie neurologiche croniche durante il concepimento, la gravidanza e l'allattamento"]]],["a-pilotto-brescia","A. Pilotto","Brescia",20,[[0,"16.00","R","Biomarcatori fluidi, brain health e medicina predittiva: verso la stratificazione del rischio neurologico"],[1,"17.40","R","Markers plasmatici e liquorali di Salute"],[2,"14.30","R","quando la levodopa non basta?"]]],["a-pisani-pavia","A. Pisani","Pavia",10,[[0,"11.00","M","Le basi genetiche delle malattie neurodegenerative"]]],["n-pizzorni-milano","N. Pizzorni","Milano",10,[[2,"17.00","R","La valutazione clinica della disfagia nel paziente neurologico: dallo screening al bedside assessment"]]],["a-poggesi-firenze","A. Poggesi","Firenze",15,[[2,"08.30","M","L"],[2,"08.30","M","Comunicazioni orali: malattie cerebrovascolari"]]],["e-portaccio-firenze","E. Portaccio","Firenze",15,[[0,"15.30","R","Dati “real world” dal Registro Italiano come strumenti di stratificazione del rischio e orientamento terapeutico"],[2,"18.40","R","La de-escalation nella gestione a lungo termine della Sclerosi Multipla"]]],["e-premi-brescia","E. Premi","Brescia",10,[[2,"18.15","R","Il sistema glinfatico nelle malattie neurodegenerative del sistema nervoso centrale"]]],["p-preziosa-milano","P. Preziosa","Milano",30,[[1,"08.30","M","Neuroimmagini"],[2,"13.00","M","Progressione silente e neuroprotezione nella sclerosi multipla: dal razionale biologico alle evidenze cliniche con ponesimod"],[2,"13.00","R","Introduzione"],[2,"13.20","R","Sclerosi Multipla: progressione silente e continuum di malattia"],[2,"15.20","R","Imaging e diagnostica: riconoscimento della smoldering attraverso MRI"]]],["a-priori-milano","A. Priori","Milano",10,[[1,"18.00","M","Neuromodulazione nelle patologie neurologiche da misfolding proteico: stimolazione elettrica tra meccanismi molecolari e prospettive cliniche"]]],["m-proietto-catania","M. Proietto","Catania",10,[[3,"08.30","M","Epilessia"]]],["e-pronello-torino","E. Pronello","Torino",10,[[2,"18.20","R","Stato dell’arte dei target molecolari e nuove strategie terapeutiche nei gliomi Gliomi lower grade"]]],["l-prosperini-roma","L. Prosperini","Roma",10,[[0,"14.30","R","fenotipi clinici della Sclerosi Multipla sono ancora rilevanti? La revisione in corso: stato dell’arte"]]],["a-protti-milano","A. Protti","Milano",10,[[1,"08.30","M","Sclerosi multipla"]]],["l-provinciali-ancona","L. Provinciali","Ancona",10,[[2,"17.00","M","Il percorso del paziente nelle fasi iniziali del declino cognitivo nell'era delle terapie \"disease modifying\""]]],["f-provini-bologna","F. Provini","Bologna",10,[[2,"17.40","R","Alterazioni del sonno nelle encefaliti autoimmuni: meccanismi e implicazioni cliniche"]]],["m-p-prudenzano-bari","M.P. Prudenzano","Bari",15,[[1,"18.30","R","Modelli organizzativi regionali della neurologia nel rapporto fra ospedale e territorio"],[2,"08.30","M","Dolore"]]],["m-pugliatti-ferrara","M. Pugliatti","Ferrara",10,[[1,"18.00","M","Sindromi demielinizzanti del snc: non solo sclerosi multipla"]]],["a-quartarone-messina","A. Quartarone","Messina",10,[[0,"11.00","M","Gestione del paziente con disturbi di coscienza"]]],["a-quattrone-catanzaro","A. Quattrone","Catanzaro",10,[[0,"15.00","R","Risonanza Magnetica Strutturale e biomarcatori per la pratica clinica"]]],["i-rainero-torino","I. Rainero","Torino",10,[[1,"17.00","M","L’aura emicranica: caratteristiche cliniche, fisiopatologiche e diagnostica differenziale"]]],["s-ramat-firenze","S. Ramat","Firenze",10,[[1,"14.00","R","Safinamide nella gestione della malattia di Parkinson: lo stato dell’arte delle evidenze cliniche"]]],["r-rao-brescia","R. Rao","Brescia",10,[[1,"08.30","M","Cefalee"]]],["s-ravaglia-pavia","S. Ravaglia","Pavia",10,[[1,"17.40","R","Malattie lisosomiali"]]],["g-reale-roma","G. Reale","Roma",15,[[0,"12.40","R","Big data ed AI: dalla ricerca all’applicazione clinica nello stroke"],[1,"09.30","M","Neuroscienze e neurotecnologie"]]],["v-redaelli-milano","V. Redaelli","Milano",10,[[2,"18.40","R","Meningiomi: dall’ormonoterapia alla teranostica"]]],["a-repice-firenze","A. Repice","Firenze",10,[[2,"15.00","M","Non più invisibile: identificare e agire contro la neuroinfiammazione smoldering"]]],["d-restivo-messina","D. Restivo","Messina",15,[[2,"17.00","M","La disfagia neurogena da sintomo a sindrome multieziologica: corretto inquadramento diagnostico e ottimizzazione del trattamento"],[2,"17.40","R","Trattamento e gestione della disfagia nel paziente neurologico: un approccio multidisciplinare"]]],["m-rocca-milano","M. Rocca","Milano",10,[[0,"11.00","R","Evoluzione dei criteri diagnostici della SM: cosa cambia nella pratica clinica"]]],["m-a-rocca-milano","M.A. Rocca","Milano",10,[[2,"16.20","R","benefici di cladribina compresse: l'efficacia sostenuta dalle evidenze scientifiche"]]],["c-rodolico-messina","C. Rodolico","Messina",10,[[0,"16.00","R","Miositi"]]],["m-romano-palermo","M. Romano","Palermo",10,[[2,"18.00","M","Eye tracking nella diagnosi e follow-up delle malattie cerebrali"]]],["m-romozzi-roma","M. Romozzi","Roma",10,[[0,"12.00","R","L’iter diagnostico per escludere possibili cause di refrattarietà"]]],["m-rosanova-milano","M. Rosanova","Milano",10,[[0,"11.30","R","Un approccio elettrofisiologico integrato allo studio della coscienza nei pazienti con gravi cerebrolesioni"]]],["e-rosati-firenze","E. Rosati","Firenze",10,[[2,"17.00","M","Management di malattie neurologiche croniche durante il concepimento, la gravidanza e l'allattamento"]]],["r-ruda-torino","R. Rudà","Torino",10,[[2,"18.00","M","Nuove frontiere della medicina di precisione in neuro-oncologia"]]],["a-rufa-siena","A. Rufa","Siena",10,[[2,"18.00","M","Eye tracking nella diagnosi e follow-up delle malattie cerebrali"]]],["a-russo-napoli","A. Russo","Napoli",10,[[0,"11.30","R","Possibili ipotesi fisiopatogenetiche"]]],["m-sabatelli-roma","M. Sabatelli","Roma",10,[[1,"15.25","R","Il trattamento della SLA-SOD1 nella pratica clinica: sfide, opportunità ed evidenze emergenti dal mondo reale"]]],["s-sacco-laquila","S. Sacco","L’Aquila",15,[[0,"11.00","R","La definizione di cefalea primaria refrattaria alla terapia sintomatica, alla terapia di profilassi e alla terapia farmacologica tout-court"],[1,"12.00","R","Trattamenti endovascolari dell’ictus: centralità e responsabilità del neurologo"]]],["e-salvatore-napoli","E. Salvatore","Napoli",10,[[1,"08.30","M","Biomarcatori in neurologia"]]],["m-salvetti-roma","M. Salvetti","Roma",15,[[0,"14.30","M","Alterazioni della sostanza bianca nelle diverse patologie del snc: oltre le categorie verso la diagnosi di malattia"],[2,"18.00","M","Immunosenescenza nella sclerosi multipla: ripensare la gestione terapeutica nel lungo termine"]]],["g-sances-pavia","G. Sances","Pavia",10,[[2,"17.40","R","Percorso organizzativo per le cefalee"]]],["v-a-sansone-milano","V.A. Sansone","Milano",20,[[0,"11.00","M","La rivoluzione digitale in neurologia"],[0,"11.00","R","Introduzione: La rivoluzione digitale in neurologia"],[0,"13.10","R","Conclusioni"]]],["p-santalucia-roma","P. Santalucia","Roma",10,[[0,"14.30","M","Gestione delle malattie cerebrovascolari tra ospedale e territorio: modelli organizzativi, prevenzione e terapie innovative"]]],["f-santorelli-pisa","F. Santorelli","Pisa",10,[[0,"12.30","R","Atassie genetiche: diagnosi e clinica"]]],["d-sassos-genova","D. Sassos","Genova",10,[[1,"18.00","R","Placca instabile: diagnosi neurosonologica e stratificazione del rischio"]]],["a-scarabello-bologna","A. Scarabello","Bologna",10,[[1,"17.20","R","La retention nei programmi di neurologia territoriale nelle primary care sub-Sahariane"]]],["a-schenone-genova","A. Schenone","Genova",10,[[0,"11.00","M","Malattie infiammatorie del sistema nervoso"]]],["t-schirinzi-roma","T. Schirinzi","Roma",15,[[0,"14.30","R","Meccanismi molecolari della neurodegenerazione"],[1,"17.00","R","Caso clinico atassie"]]],["s-sensi-chieti","S. Sensi","Chieti",10,[[0,"11.00","M","Le basi genetiche delle malattie neurodegenerative"]]],["c-serrati-imperia","C. Serrati","Imperia",10,[[3,"08.30","M","Biomarcatori in neurologia"]]],["s-servidei-roma","S. Servidei","Roma",10,[[2,"08.30","M","Malattie neuromuscolari"]]],["m-sessa-milano","M. Sessa","Milano",10,[[2,"18.00","M","Il sistema glinfatico"]]],["g-siciliano-pisa","G. Siciliano","Pisa",15,[[1,"17.00","M","Terapie innovative per malattie neuromuscolari con interessamento del sistema nervoso centrale"],[3,"11.30","M","Nuovi paradigmi terapeutici nelle malattie neurologiche"]]],["a-silvani-milano","A. Silvani","Milano",10,[[3,"09.30","M","Neuro-oncologia"]]],["m-c-silveri-milano","M.C. Silveri","Milano",10,[[1,"17.00","M","Attività motoria e riserva motoria nella malattia di parkinson e disordini del movimento"]]],["r-silvestri-messina","R. Silvestri","Messina",10,[[2,"17.20","R","Sonno, ritmi circadiani e neuroinfiammazione nella fisiopatologia della demenza"]]],["m-silvestrini-ancona","M. Silvestrini","Ancona",10,[[0,"14.30","M","Gestione delle malattie cerebrovascolari tra ospedale e territorio: modelli organizzativi, prevenzione e terapie innovative"]]],["m-silvestro-napoli","M. Silvestro","Napoli",10,[[1,"17.00","R","Aura: verso una classificazione su base eziologica"]]],["g-soraru-padova","G. Sorarù","Padova",10,[[1,"","R","- 17.00 Pausa caffè"]]],["c-sorbera-messina","C. Sorbera","Messina",10,[[3,"08.30","M","Disordini del movimento"]]],["s-sorbi-firenze","S. Sorbi","Firenze",15,[[0,"11.30","R","Genetica delle demenze: dalla malattia di Alzheimer alle demenze frontotemporali"],[3,"11.30","M","Nuovi paradigmi terapeutici nelle malattie neurologiche"]]],["p-spadin-milano","P. Spadin","Milano",10,[[2,"15.05","R","Ripensare la rete a partire dai bisogni di pazienti e caregiver"]]],["g-spagni-firenze","G. Spagni","Firenze",10,[[3,"08.30","M","Neuroimmunologia"]]],["f-squitieri-roma","F. Squitieri","Roma",10,[[1,"09.30","M","Neurogenetica e malattie rare"]]],["a-stefani-roma","A. Stefani","Roma",10,[[2,"08.30","M","Disordini del movimento"]]],["f-stocchi-roma","F. Stocchi","Roma",20,[[0,"12.30","R","Anticorpi anti-sinucleina e altre terapie disease-modifying nella Malattia di Parkinson"],[1,"14.30","R","Evoluzione delle strategie terapeutiche per la gestione delle fluttuazioni motorie nella malattia di Parkinson"],[2,"14.00","M","Dal wearing off al time to on: una terapia integrata per la malattia di parkinson"]]],["p-sucapane-laquila","P. Sucapane","L’Aquila",10,[[2,"17.20","R","MRgFUS nei disordini del movimento"]]],["a-suppa-roma","A. Suppa","Roma",10,[[2,"18.00","R","Percorso organizzativo per la disfonia"]]],["f-tagliavini-milano","F. Tagliavini","Milano",10,[[3,"09.30","M","Brain health e prevenzione"]]],["s-tamburin-verona","S. Tamburin","Verona",10,[[2,"17.00","M","Nei disturbi neurologici"]]],["r-tassi-siena","R. Tassi","Siena",10,[[1,"18.20","R","Doppler transcranico nelle stenosi intracraniche: “oltre il lume”"]]],["c-tassorelli-pavia","C. Tassorelli","Pavia",20,[[0,"11.00","M","Le cefalee refrattarie alla terapia: possibili ipotesi fisiopatogenetiche, iter diagnostico e gestione"],[1,"12.30","M","Gender gap e vulnerabilità neurologica: basi biologiche e implicazioni per la terapia"],[2,"17.00","M","La disfagia neurogena da sintomo a sindrome multieziologica: corretto inquadramento diagnostico e ottimizzazione del trattamento"]]],["g-tedeschi-napoli","G. Tedeschi","Napoli",10,[[0,"11.00","M","Le cefalee refrattarie alla terapia: possibili ipotesi fisiopatogenetiche, iter diagnostico e gestione"]]],["c-terranova-messina","C. Terranova","Messina",10,[[2,"08.30","M","Disordini del movimento"]]],["a-tessitore-napoli","A. Tessitore","Napoli",20,[[0,"14.30","M","Le neuroimmagini nelle sindromi parkinsoniane: imaging avanzato e applicazioni nella pratica clinica"],[1,"14.00","M","La gestione della malattia di parkinson: tra evidenze consolidate e scenari emergenti"],[1,"15.00","M","Nuovi trattamenti per la malattia di alzheimer: siamo pronti al cambiamento"]]],["n-ticozzi-milano","N. Ticozzi","Milano",15,[[0,"14.30","R","SLA. Lessons learned con le terapie innovative e nuove strategie terapeutiche"],[1,"15.05","R","Dal gene alla terapia: il percorso scientifico della SLA-SOD1"]]],["m-tinazzi-verona","M. Tinazzi","Verona",10,[[2,"18.00","M","Disturbi neurologici funzionali: comorbidità neurologica e psichiatrica"]]],["v-tomassini-chieti","V. Tomassini","Chieti",15,[[1,"08.30","M","Neuroimmagini"],[1,"15.50","R","Dal controllo della malattia alla qualità di vita: il ruolo dell’inibizione del C5 nel lungo termine"]]],["c-tortorella-roma","C. Tortorella","Roma",10,[[1,"08.30","M","Sclerosi multipla"]]],["a-toscano-messina","A. Toscano","Messina",10,[[0,"15.30","R","Malattia di Pompe: attuali terapie, gestione dei pazienti e prospettive future"]]],["s-tozza-napoli","S. Tozza","Napoli",10,[[2,"","R","- 17.00 Pausa caffè"]]],["v-tozzi-milano","V. Tozzi","Milano",10,[[2,"17.00","R","La riorganizzazione della neurologia d’urgenza per le patologie tempo dipendenti"]]],["m-trojano-bari","M. Trojano","Bari",10,[[0,"11.00","M","Sclerosi multipla: dall’aggiornamento dei criteri diagnostici alla ridefinizione dei fenotipi e delle strategie terapeutiche"]]],["a-uccelli-genova","A. Uccelli","Genova",10,[[0,"11.00","M","Sclerosi multipla: dall’aggiornamento dei criteri diagnostici alla ridefinizione dei fenotipi e delle strategie terapeutiche"]]],["v-vacchiano-bologna","V. Vacchiano","Bologna",10,[[2,"17.00","R","Dove e perché nasce la SLA? Determinanti biologici dell’esordio e del fenotipo"]]],["e-m-valente-pavia","E.M. Valente","Pavia",10,[[0,"12.00","R","Disordini del movimento su base genetica: correlazioni genotipo-fenotipo"]]],["m-r-valente-udine","M.R. Valente","Udine",10,[[1,"08.30","M","Sclerosi multipla"]]],["m-valeriani-roma","M. Valeriani","Roma",10,[[1,"17.00","M","La sfida della transizione nelle malattie rare con particolare riguardo ai modelli gestionali e alle terapie, da quelle comuni alle terapie più avanzate"]]],["g-vallortigara-trento","G. Vallortigara","Trento",10,[[0,"18.15","R","La costruzione di un cervello sociale"]]],["n-vanacore-roma","N. Vanacore","Roma",10,[[0,"11.30","R","Efficacia e sicurezza dell’utilizzo degli anticorpi anti-amiloide"]]],["f-vanoli-milano","F. Vanoli","Milano",15,[[1,"14.00","R","Che cosa significa realmente attività di malattia nella miastenia?"],[1,"15.40","R","Rozanolixizumab nelle RWE: evidenze internazionali e dati emergenti dalla pratica clinica italiana"]]],["g-vasco-roma","G. Vasco","Roma",10,[[1,"14.10","R","Storia naturale dell’atassia di Friedreich: comprendere il presente per orientare il futuro"]]],["r-vasta-torino","R. Vasta","Torino",10,[[2,"17.15","R","Perché la progressione è così eterogenea? Meccanismi della variabilità individuale"]]],["m-vecchio-caltanissetta","M. Vecchio","Caltanissetta",15,[[2,"08.30","M","L"],[2,"08.30","M","Comunicazioni orali: malattie cerebrovascolari"]]],["f-verde-milano","F. Verde","Milano",10,[[3,"08.30","M","Biomarcatori in neurologia"]]],["p-vezzulli-milano","P. Vezzulli","Milano",10,[[2,"","R","- 17.00 Pausa caffè"]]],["s-vidale-varese","S. Vidale","Varese",10,[[3,"09.30","M","Brain health e prevenzione"]]],["v-villani-roma","V. Villani","Roma",10,[[2,"18.00","M","Nuove frontiere della medicina di precisione in neuro-oncologia"]]],["c-vinciguerra-salerno","C. Vinciguerra","Salerno",10,[[1,"15.20","R","L’esperienza del paziente"]]],["a-vogrig-udine","A. Vogrig","Udine",10,[[0,"12.00","R","Patologie autoimmuni indotte da inibitori dei checkpoint immunitari"]]],["g-zamboni-modena","G. Zamboni","Modena",10,[[1,"17.20","R","Neuroimaging markers of Brain Health"]]],["c-zanferrari-milano","C. Zanferrari","Milano",10,[[2,"18.00","R","La gestione dell’Urgenza Neurologica nell’Ospedale senza Neurologia"]]],["m-zappia-catania","M. Zappia","Catania",30,[[0,"17.30","R","Apertura del congresso"],[1,"11.30","M","Nuove prospettive in neurologia"],[2,"14.30","M","Ripensare l’organizzazione della presa in carico della malattia di alzheimer nell’era delle terapie innovative: il progetto rapid"],[2,"14.30","R","Introduzione dei lavori"],[2,"17.00","M","La prevenzione primaria nelle malattie neurodegenerative: mito o realtà possibile?"]]],["m-l-zedde-reggio-emilia","M.L. Zedde","Reggio Emilia",10,[[2,"17.30","R","Fast-Track Neurologico nel Dipartimento d’Emergenza-Urgenza"]]],["m-zibetti-torino","M. Zibetti","Torino",10,[[1,"18.30","R","Modulare l’aggregazione di alfasinucleina con il campo elettrico: evidenze biopatologiche su microvescicole"]]]];
+const DAYS = ["Sab 24","Dom 25","Lun 26","Mar 27"];
+const BUDGET = 100, TEAM_SIZE = 5;
+const BONUS = [
+  {id:"orario", p:10, l:"Talk finito in orario"},
+  {id:"parola", p:15, l:"Dice una parola chiave del programma"},
+  {id:"poster", p:20, l:"Vince un voto poster"},
+  {id:"selfie", p:5,  l:"Selfie con il relatore postato nel gruppo"},
+  {id:"slide",  p:-5, l:"«Può tornare indietro di una slide?»"},
+  {id:"tech",   p:-10,l:"Microfono o video KO"},
+  {id:"altro",  p:null,l:"Altro (punti a scelta)"}
+];
+const WORDS = ["real-world","biomarcatori","plasma","p-tau","neurofilamenti","machine learning","digitale","wearable","continuum","smoldering","PIRA","medicina di precisione","multidisciplinare","lungo termine","precoce / early","sistema glinfatico","nuove frontiere","sostenibilità","esposoma","CGRP"];
+
+/* ---------- state ---------- */
+const ART = new Map();
+for (const [id,n,c,price,apps] of ARTISTS_RAW) ART.set(id,{id,n,c,price,apps,extra:false});
+const S = {
+  db:null, user:null, uid:null, isOwner:false, canEdit:false,
+  teams:[], manual:[], events:[], config:{locked:false, referees:[]},
+  draft:{name:"", picks:[], cap:null}, draftDirty:false,
+  canWrite:null, view:"classifica", day:null, openRows:new Set(), refArtist:null, refBonus:null
+};
+try{ const d=JSON.parse(localStorage.getItem("fn-draft")||"null"); if(d&&Array.isArray(d.picks)) S.draft={...S.draft,...d}; }catch(e){}
+try{ const pn=localStorage.getItem("fn-player"); if(pn) document.getElementById("playerName").value=pn; }catch(e){}
+
+/* ---------- helpers ---------- */
+const $ = s => document.getElementById(s);
+function h(tag, attrs={}, ...kids){
+  const el=document.createElement(tag);
+  for (const [k,v] of Object.entries(attrs||{})){
+    if (v==null || v===false) continue;
+    if (k==="class") el.className=v; else if (k==="text") el.textContent=v;
+    else if (k.startsWith("on")) el.addEventListener(k.slice(2),v); else el.setAttribute(k,v===true?"":v);
+  }
+  for (const k of kids.flat()) if (k!=null && k!==false) el.append(k.nodeType?k:document.createTextNode(String(k)));
+  return el;
+}
+const fmt = n => (n>0?"+":"")+n;
+const norm = s => (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+function toast(msg){ const t=$("toast"); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,2600); }
+function banner(msg){ const b=$("banner"); if(!msg){b.hidden=true;return;} b.textContent=msg; b.hidden=false; }
+function surname(n){ return n.replace(/^([A-Za-zÀ-ÿ]\.)+\s*/,""); }
+
+/* eeg trace */
+(function(){ let d="M0 11", x=0; const seq=[0,0,1,-1,0,0,0,7,-9,3,0,0,1,0,-2,0,0];
+  while(x<700){ for(const y of seq){ x+=7; d+=` L${x} ${11-y}`; if(x>=700)break; } }
+  $("eegPath").setAttribute("d",d); })();
+
+/* ---------- scoring ---------- */
+function artistPoints(){ const m=new Map(); for(const e of S.events){ m.set(e.a,(m.get(e.a)||0)+(Number(e.p)||0)); } return m; }
+function teamScore(t,pts){ let s=0; for(const a of t.picks||[]) s+=(pts.get(a)||0)*(a===t.cap?2:1); return s; }
+function cost(picks){ return picks.reduce((s,a)=>s+(ART.get(a)?.price||0),0); }
+function allTeams(){
+  return [...S.teams.map(t=>({...t,kind:"u"})), ...S.manual.map(t=>({...t,kind:"m"}))]
+    .filter(t=>Array.isArray(t.picks)&&t.picks.length);
+}
+
+/* ---------- views ---------- */
+const TABS=[
+  {id:"classifica",l:"Classifica",i:'<path d="M5 20V10M12 20V4M19 20v-7"/>'},
+  {id:"squadra",l:"Squadra",i:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c.6-3.5 3-5.5 6-5.5s5.4 2 6 5.5"/><path d="M16 4.5a3 3 0 0 1 0 6M18 14.6c1.7.7 2.8 2.6 3 5.4"/>'},
+  {id:"artisti",l:"Relatori",i:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'},
+  {id:"regole",l:"Regole",i:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/>'},
+  {id:"arbitro",l:"Arbitro",i:'<path d="M8 3h8l-1 6H9z"/><path d="M12 9v4"/><circle cx="12" cy="17" r="4"/>'}
+];
+function isRef(){ return !!S.refOK; }
+function renderTabs(){
+  const tabs=TABS.filter(t=>t.id!=="arbitro"||isRef()||S.view==="arbitro");
+  const box=$("tabsIn"); box.style.setProperty("--n",tabs.length); box.replaceChildren();
+  for(const t of tabs){
+    const b=h("button",{type:"button","aria-current":S.view===t.id?"page":null,onclick:()=>go(t.id)});
+    b.innerHTML=`<svg viewBox="0 0 24 24" aria-hidden="true">${t.i}</svg>`; b.append(t.l); box.append(b);
+  }
+}
+function go(v){
+  if(!TABS.some(t=>t.id===v)) v="classifica";
+  S.view=v; document.querySelectorAll("[data-view]").forEach(s=>s.hidden=s.dataset.view!==v);
+  try{ if(location.hash!=="#"+v) history.replaceState(null,"","#"+v); }catch(e){}
+  renderTabs(); window.scrollTo(0,0);
+}
+
+/* profiles */
+function personName(id){ if(id===S.uid) return "Tu"; const t=S.teams.find(x=>x.id===id); return (t&&t.player)||"Giocatore"; }
+
+function renderBoard(){
+  const pts=artistPoints(), teams=allTeams().map(t=>({...t,score:teamScore(t,pts)})).sort((a,b)=>b.score-a.score);
+  const box=$("board"); box.replaceChildren();
+  if(!teams.length){ box.append(h("div",{class:"empty",text:"Ancora nessuna squadra. Crea la tua nella scheda “Squadra”."})); }
+  let prev=null, rank=0;
+  teams.forEach((t,i)=>{
+    if(t.score!==prev){ rank=i+1; prev=t.score; }
+    const key=t.kind+t.id, open=S.openRows.has(key);
+    const who = (t.id===S.uid?"Tu · ":"")+(t.player||"Giocatore");
+    const row=h("div",{class:"row"+(rank===1?" r1":""),role:"button",tabindex:"0","aria-expanded":open?"true":"false"},
+      h("div",{class:"rank",text:rank}),
+      h("div",{class:"main"},h("div",{class:"nm",text:t.name||"Squadra senza nome"}),h("div",{class:"sub",text:who})),
+      h("div",{class:"total",text:t.score}));
+    const toggle=()=>{ open?S.openRows.delete(key):S.openRows.add(key); renderBoard(); };
+    row.addEventListener("click",toggle); row.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();}});
+    if(open){
+      const pk=h("div",{class:"picks"});
+      for(const a of t.picks){ const ar=ART.get(a); const p=(pts.get(a)||0)*(a===t.cap?2:1);
+        pk.append(h("div",{},h("span",{class:a===t.cap?"cap":""},(ar?ar.n:"?")+(a===t.cap?" ★ capitano":"")),h("span",{class:"pts "+(p>0?"pos":p<0?"neg":""),text:fmt(p)}))); }
+      row.append(pk);
+    }
+    box.append(row);
+  });
+  const mine=S.teams.find(t=>t.id===S.uid);
+  $("mineScore").textContent = mine ? teamScore(mine,pts) : "–";
+}
+function feedRows(box,limit,withDelete){
+  box.replaceChildren();
+  const ev=[...S.events].sort((a,b)=>(b.ts||0)-(a.ts||0)).slice(0,limit);
+  if(!ev.length){ box.append(h("div",{class:"empty",text:withDelete?"Nessun punto ancora.":"I punti appariranno qui appena gli arbitri iniziano ad assegnarli."})); return; }
+  for(const e of ev){
+    const ar=ART.get(e.a), b=BONUS.find(x=>x.id===e.b);
+    const what=(b?(b.id==="altro"?"Altro":b.l):"Bonus")+(e.w?` · “${e.w}”`:"")+(e.note?` · ${e.note}`:"");
+    const t=e.ts?new Date(e.ts):null;
+    const when=t?`${DAYS[[24,25,26,27].indexOf(t.getDate())]||""} ${String(t.getHours()).padStart(2,"0")}:${String(t.getMinutes()).padStart(2,"0")}`:"";
+    const right = withDelete ? h("button",{class:"icon-btn",type:"button","aria-label":"Annulla",onclick:()=>delEvent(e.id)},"×") : h("span",{class:"muted num",style:"font-size:12px",text:when});
+    box.append(h("div",{class:"row"},
+      h("span",{class:"badge "+(e.p>=0?"pos":"neg"),text:fmt(Number(e.p)||0)}),
+      h("div",{class:"main"},h("div",{class:"nm",text:ar?ar.n:"?"}),h("div",{class:"sub",text:what+(withDelete?` · ${e.byName||"Arbitro"} · ${when}`:"")})),
+      right));
+  }
+}
+
+/* ---------- team editor ---------- */
+function saveDraftLocal(){ try{ localStorage.setItem("fn-draft",JSON.stringify(S.draft)); }catch(e){} }
+function renderTeam(){
+  const d=S.draft, locked=!!S.config.locked;
+  $("lockedNote").hidden=!locked;
+  const nameEl=$("teamName"); if(document.activeElement!==nameEl) nameEl.value=d.name||"";
+  nameEl.disabled=locked; $("pickSearch").disabled=locked;
+  const spent=cost(d.picks), bar=$("bar");
+  bar.querySelector("i").style.width=Math.min(100,spent/BUDGET*100)+"%"; bar.classList.toggle("over",spent>BUDGET);
+  $("budgetTxt").textContent=`${spent} / ${BUDGET}`;
+  const pts=artistPoints(), box=$("slots"); box.replaceChildren();
+  for(let i=0;i<TEAM_SIZE;i++){
+    const a=d.picks[i], ar=a&&ART.get(a);
+    if(!ar){ box.append(h("div",{class:"row"},h("span",{class:"slotn",text:i+1}),h("div",{class:"main muted",text:"Posto libero"}),h("span"),h("span"))); continue; }
+    box.append(h("div",{class:"row"},
+      h("span",{class:"slotn",text:i+1}),
+      h("div",{class:"main"},h("div",{class:"nm",text:ar.n}),h("div",{class:"sub",text:`${ar.c} · ${ar.price} Neuroni · ${fmt(pts.get(a)||0)} pt`})),
+      h("button",{class:"star",type:"button","aria-pressed":d.cap===a?"true":"false","aria-label":"Capitano",disabled:locked,onclick:()=>{d.cap=a;dirty();}},"★ C"),
+      h("button",{class:"icon-btn",type:"button","aria-label":"Togli",disabled:locked,onclick:()=>{d.picks=d.picks.filter(x=>x!==a); if(d.cap===a)d.cap=null; dirty();}},"−")));
+  }
+  const problems=teamProblems(d);
+  $("saveTeam").disabled=locked||problems.length>0||S.canWrite===false;
+  const saved=S.teams.find(t=>t.id===S.uid);
+  $("saveState").textContent = locked ? "" : problems.length ? problems[0] : (S.canWrite===false ? "Connessione non disponibile" : (S.draftDirty||!saved ? "Modifiche non salvate" : "Salvata"));
+  renderPickResults();
+}
+function teamProblems(d){
+  const p=[];
+  if(d.picks.length<TEAM_SIZE) p.push(`Mancano ${TEAM_SIZE-d.picks.length} relatori`);
+  if(cost(d.picks)>BUDGET) p.push(`Budget superato di ${cost(d.picks)-BUDGET} Neuroni`);
+  if(!d.cap) p.push("Scegli il capitano (★)");
+  if(!(d.name||"").trim()) p.push("Dai un nome alla squadra");
+  if(!$("playerName").value.trim()) p.push("Scrivi il tuo nome");
+  return p;
+}
+function dirty(){ S.draftDirty=true; saveDraftLocal(); renderTeam(); }
+function renderPickResults(){
+  const q=norm($("pickSearch").value.trim()), box=$("pickResults");
+  if(q.length<2){ box.hidden=true; return; }
+  const d=S.draft, left=BUDGET-cost(d.picks);
+  const res=[...ART.values()].filter(a=>norm(a.n+" "+a.c+" "+a.apps.map(x=>x[3]).join(" ")).includes(q)).slice(0,30);
+  box.replaceChildren(); box.hidden=false;
+  if(!res.length){ box.append(h("div",{class:"empty",text:"Nessun risultato"})); return; }
+  for(const a of res){
+    const inTeam=d.picks.includes(a.id), full=d.picks.length>=TEAM_SIZE, tooMuch=a.price>left;
+    box.append(h("div",{class:"row",style:"grid-template-columns:1fr auto auto"},
+      h("div",{class:"main"},h("div",{class:"nm",text:a.n}),h("div",{class:"sub",text:a.c+" · "+a.apps.length+(a.apps.length===1?" presenza":" presenze")})),
+      h("span",{class:"price",text:a.price+" N"}),
+      h("button",{class:"icon-btn",type:"button","aria-label":"Aggiungi",disabled:inTeam||full||tooMuch,title:tooMuch?"Budget insufficiente":"",onclick:()=>{d.picks.push(a.id); if(d.picks.length===TEAM_SIZE){$("pickSearch").value="";} dirty();}},inTeam?"✓":"+")));
+  }
+}
+async function saveTeam(){
+  const d=S.draft; if(!S.db||!S.uid){ S.canWrite=false; renderTeam(); return; }
+  $("saveTeam").disabled=true; $("saveState").textContent="Salvataggio…";
+  try{
+    await S.db.doc("teams/"+S.uid).set({name:d.name.trim().slice(0,40),player:$("playerName").value.trim().slice(0,40),picks:d.picks.slice(0,TEAM_SIZE),cap:d.cap,ts:Date.now()});
+    S.draftDirty=false; S.canWrite=true; toast("Squadra salvata");
+  }catch(e){
+    if(e&&e.code==="permission-denied"){ toast(S.config.locked?"Le squadre sono bloccate":"Squadra non valida: controlla budget e capitano"); }
+    else if(e&&(e.code==="unavailable"||e.code==="unavailable")){ toast("Connessione instabile, riprova tra poco"); }
+    else toast("Salvataggio non riuscito");
+  }
+  renderTeam();
+}
+
+/* ---------- artists list ---------- */
+function renderArtists(){
+  const q=norm($("artSearch").value.trim()), sort=$("artSort").value, pts=artistPoints(), box=$("artList");
+  let list=[...ART.values()].filter(a=>(S.day==null||a.apps.some(x=>x[0]===S.day)) && (!q||norm(a.n+" "+a.c+" "+a.apps.map(x=>x[3]).join(" ")).includes(q)));
+  if(sort==="pts") list.sort((a,b)=>(pts.get(b.id)||0)-(pts.get(a.id)||0)||a.price-b.price);
+  else if(sort==="price") list.sort((a,b)=>b.price-a.price||surname(a.n).localeCompare(surname(b.n)));
+  $("artCount").textContent=`${list.length} ${list.length===1?"persona":"persone"}`;
+  box.replaceChildren();
+  if(!list.length){ box.append(h("div",{class:"empty",text:"Nessun risultato"})); return; }
+  const frag=document.createDocumentFragment();
+  for(const a of list.slice(0,200)){
+    const key="a"+a.id, open=S.openRows.has(key), p=pts.get(a.id)||0;
+    const row=h("div",{class:"row",role:"button",tabindex:"0","aria-expanded":open?"true":"false"},
+      h("div",{class:"main"},h("div",{class:"nm",text:a.n}),h("div",{class:"sub",text:a.c+(a.extra?" · aggiunto dagli arbitri":` · ${a.apps.length} ${a.apps.length===1?"presenza":"presenze"}`)})),
+      h("span",{class:"pts "+(p>0?"pos":p<0?"neg":"muted"),text:fmt(p)}),
+      h("span",{class:"price",text:a.price+" N"}));
+    const toggle=()=>{ open?S.openRows.delete(key):S.openRows.add(key); renderArtists(); };
+    row.addEventListener("click",toggle); row.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle();}});
+    if(open && a.apps.length){
+      const ap=h("div",{class:"apps"});
+      for(const [d,t,r,s] of a.apps) ap.append(h("div",{},h("span",{class:"when",text:`${DAYS[d]} ${t}`}),h("span",{},h("span",{class:"role",text:r==="M"?"Modera ":"Parla "}),s)));
+      row.append(ap);
+    }
+    frag.append(row);
+  }
+  box.append(frag);
+  if(list.length>200) box.append(h("div",{class:"empty",text:`Altri ${list.length-200}: affina la ricerca`}));
+}
+function renderDayChips(){
+  const box=$("dayChips"); box.replaceChildren();
+  [["Tutti",null],...DAYS.map((d,i)=>[d,i])].forEach(([l,v])=>box.append(h("button",{class:"chip",type:"button","aria-pressed":S.day===v?"true":"false",onclick:()=>{S.day=v;renderDayChips();renderArtists();}},l)));
+}
+
+/* ---------- rules ---------- */
+function renderRules(){
+  const tb=$("bonusTable"); tb.replaceChildren();
+  for(const b of BONUS){ if(b.id==="altro") continue;
+    tb.append(h("tr",{},h("td",{text:b.l}),h("td",{class:"p pts "+(b.p>0?"pos":"neg"),text:fmt(b.p)}))); }
+  tb.append(h("tr",{},h("td",{class:"muted",text:"Altro: gli arbitri possono dare punti extra per momenti memorabili"}),h("td",{class:"p pts muted",text:"±"})));
+  $("wordList").replaceChildren(...WORDS.map(w=>h("span",{class:"word",text:w})));
+}
+
+/* ---------- referee ---------- */
+function renderRef(){
+  const ok=isRef(); $("refNo").hidden=ok; $("refYes").hidden=!ok; 
+  if(!ok) return;
+  // selected artist
+  const sel=$("refSel"), a=S.refArtist&&ART.get(S.refArtist);
+  sel.hidden=!a; sel.replaceChildren();
+  if(a) sel.append(h("div",{class:"main"},h("div",{class:"nm",text:a.n}),h("div",{class:"sub",text:a.c})),h("button",{class:"btn sm",type:"button",onclick:()=>{S.refArtist=null;renderRef();$("refSearch").focus();}},"Cambia"));
+  $("refSearch").hidden=!!a; if(a) $("refResults").hidden=true;
+  const g=$("bonusGrid"); g.replaceChildren();
+  for(const b of BONUS) g.append(h("button",{type:"button","aria-pressed":S.refBonus===b.id?"true":"false",onclick:()=>{S.refBonus=b.id;renderRef();}},
+    h("b",{class:b.p==null?"":(b.p>0?"pos":"neg"),text:b.p==null?"±":fmt(b.p)}),h("span",{text:b.l})));
+  $("wordWrap").hidden=S.refBonus!=="parola"; $("customWrap").hidden=S.refBonus!=="altro";
+  $("refGo").disabled=!(a&&S.refBonus);
+  feedRows($("refFeed"),40,true);
+  $("lockToggle").checked=!!S.config.locked;
+}
+function renderRefResults(){
+  const q=norm($("refSearch").value.trim()), box=$("refResults");
+  if(q.length<2){ box.hidden=true; return; }
+  const res=[...ART.values()].filter(a=>norm(a.n+" "+a.c).includes(q)).slice(0,20);
+  box.replaceChildren(); box.hidden=false;
+  if(!res.length){ box.append(h("div",{class:"empty",text:"Nessun risultato"})); return; }
+  for(const a of res) box.append(h("button",{type:"button",class:"row",style:"grid-template-columns:1fr auto;background:none;border:0;border-bottom:1px solid var(--line);text-align:left;width:100%",onclick:()=>{S.refArtist=a.id;$("refSearch").value="";renderRef();}},
+    h("div",{class:"main"},h("div",{class:"nm",text:a.n}),h("div",{class:"sub",text:a.c})),h("span",{class:"muted",text:"Scegli"})));
+}
+let busy=false;
+async function award(){
+  if(busy||!S.db) return; const b=BONUS.find(x=>x.id===S.refBonus); if(!b||!S.refArtist) return;
+  let p=b.p; if(b.id==="altro"){ p=Math.round(Number($("refPts").value)); if(!Number.isFinite(p)||p===0||Math.abs(p)>100){ toast("Inserisci un punteggio tra −100 e 100"); return; } }
+  const doc={a:S.refArtist,b:b.id,p,by:S.uid||"",byName:S.refName||"Arbitro",ts:Date.now()};
+  if(b.id==="parola") doc.w=$("refWord").value;
+  const note=$("refNote").value.trim(); if(note) doc.note=note.slice(0,80);
+  busy=true; $("refGo").disabled=true;
+  try{ await S.db.collection("events").add(doc); toast(`${fmt(p)} a ${ART.get(S.refArtist).n}`); S.refBonus=null; S.refArtist=null; $("refNote").value=""; }
+  catch(e){ toast(e&&e.code==="permission-denied"?"Non risulti arbitro: riapri il link arbitro":"Non riuscito, riprova"); }
+  busy=false; renderRef();
+}
+async function delEvent(id){
+  try{ await S.db.doc("events/"+id).delete(); toast("Punti annullati"); }catch(e){ toast("Non riuscito"); }
+}
+async function toggleLock(){
+  try{ await S.db.doc("config/main").set({locked:$("lockToggle").checked}); toast($("lockToggle").checked?"Squadre bloccate":"Squadre sbloccate"); }catch(e){ toast("Non riuscito"); }
+}
+async function addExtra(){
+  const n=$("extraName").value.trim(), c=$("extraCity").value.trim();
+  if(n.length<3){ toast("Scrivi il nome"); return; }
+  const id="x-"+norm(n+" "+c).replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,60);
+  try{ await S.db.doc("extra/"+id).set({n:n.slice(0,40),c:c.slice(0,30),price:10,ts:Date.now()}); $("extraName").value="";$("extraCity").value=""; toast("Aggiunto alla lista"); }
+  catch(e){ toast("Non riuscito"); }
+}
+
+/* ---------- render all ---------- */
+function renderAll(){ renderBoard(); feedRows($("feed"),15,false); renderTeam(); renderArtists(); renderRef(); renderTabs(); }
+
+/* ---------- wiring ---------- */
+$("teamName").addEventListener("input",e=>{S.draft.name=e.target.value; S.draftDirty=true; saveDraftLocal(); const pr=teamProblems(S.draft); $("saveTeam").disabled=!!S.config.locked||pr.length>0||S.canWrite===false; $("saveState").textContent=pr[0]||"Modifiche non salvate";});
+$("pickSearch").addEventListener("input",renderPickResults);
+$("saveTeam").addEventListener("click",saveTeam);
+$("playerName").addEventListener("input",e=>{try{localStorage.setItem("fn-player",e.target.value);}catch(_){} S.draftDirty=true; renderTeam();});
+$("artSearch").addEventListener("input",renderArtists);
+$("artSort").addEventListener("change",renderArtists);
+$("refSearch").addEventListener("input",renderRefResults);
+$("refGo").addEventListener("click",award);
+$("lockToggle").addEventListener("change",toggleLock);
+$("extraGo").addEventListener("click",addExtra);
+$("refWord").replaceChildren(...WORDS.map(w=>h("option",{value:w,text:w})));
+
+renderRules(); renderDayChips();
+go((location.hash||"").slice(1)||"classifica");
+window.addEventListener("hashchange",()=>{ const v=(location.hash||"").slice(1); if(v&&v!==S.view) go(v); });
+renderAll();
+
+/* ---------- live data (Firebase) ---------- */
+(async()=>{
+  if(!window.firebase || !FIREBASE_CONFIG.apiKey || FIREBASE_CONFIG.apiKey.startsWith("INCOLLA")){ banner("Configurazione mancante: questa copia non è ancora collegata al database."); S.canWrite=false; renderTeam(); return; }
+  firebase.initializeApp(FIREBASE_CONFIG);
+  const auth=firebase.auth(), db=firebase.firestore();
+  try{ await auth.signInAnonymously(); }catch(e){ banner("Accesso non riuscito. Controlla la connessione e ricarica la pagina."); S.canWrite=false; renderTeam(); return; }
+  S.db=db; S.uid=auth.currentUser.uid;
+  try{ S.refName=localStorage.getItem("fn-refname")||""; }catch(e){}
+  // referee link: ?arbitro=CODICE
+  const params=new URLSearchParams(location.search); const code=params.get("arbitro");
+  if(code){
+    try{ await db.doc("refs/"+S.uid).set({k:code,ts:Date.now()}); toast("Sei abilitato come arbitro"); go("arbitro"); }
+    catch(e){ toast("Codice arbitro non valido"); }
+    try{ history.replaceState(null,"",location.pathname+"#arbitro"); }catch(e){}
+  }
+  const onErr=e=>{ console.warn(e); };
+  let firstTeams=true;
+  db.collection("teams").onSnapshot(snap=>{
+    S.teams=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const mine=S.teams.find(t=>t.id===S.uid);
+    if(mine && firstTeams && !S.draftDirty){ S.draft={name:mine.name||"",picks:[...(mine.picks||[])],cap:mine.cap||null}; if(mine.player&&!$("playerName").value) $("playerName").value=mine.player; saveDraftLocal(); }
+    if(mine && mine.player) { S.refName=mine.player; }
+    S.canWrite=true; firstTeams=false;
+    renderAll();
+  },onErr);
+  db.collection("events").onSnapshot(snap=>{
+    S.events=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderBoard(); feedRows($("feed"),15,false); renderArtists(); renderTeam(); if(isRef()) feedRows($("refFeed"),40,true);
+  },onErr);
+  db.collection("extra").onSnapshot(snap=>{
+    for(const d of snap.docs){ const x=d.data(); if(!ART.has(d.id)) ART.set(d.id,{id:d.id,n:String(x.n||"?"),c:String(x.c||""),price:10,apps:[],extra:true}); }
+    renderArtists();
+  },onErr);
+  db.doc("config/main").onSnapshot(snap=>{
+    const c=snap.exists?snap.data():{}; S.config={locked:!!c.locked}; renderAll();
+  },onErr);
+  db.doc("refs/"+S.uid).onSnapshot(snap=>{ S.refOK=snap.exists; renderAll(); },()=>{ S.refOK=false; });
+})();
+</script>
+</body>
+</html>
