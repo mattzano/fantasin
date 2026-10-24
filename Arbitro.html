@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<style>
+:root{--bg:#F2F4F8;--card:#fff;--ink:#14213D;--muted:#5B6478;--line:#D9DFE9;--accent:#C4302B;--good:#1D7A4C;--bad:#B3261E;--soft:#E7EBF2;--gold:#A87405}
+@media (prefers-color-scheme:dark){:root{--bg:#0D1322;--card:#151D31;--ink:#E7ECF5;--muted:#9AA5BB;--line:#27314B;--accent:#FF6A5C;--good:#4CC38A;--bad:#FF8A80;--soft:#1C2540;--gold:#E7B84C;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:640px;margin:0 auto;padding:12px 16px 110px}
+header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0 10px;border-bottom:1px solid var(--line)}
+h1{font-size:20px;margin:0;font-weight:800;letter-spacing:-.01em}h1 span{color:var(--accent)}
+.who{font-size:12.5px;color:var(--muted);text-align:right}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:20px 0 8px;font-weight:700}
+button,input,select{font:inherit;color:inherit}
+input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card)}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.sm{padding:7px 10px;font-size:13.5px}
+.btn:disabled{opacity:.45}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 12px;font-weight:700;font-size:13.5px}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:12px;overflow:hidden}
+.sh{padding:10px 12px;border-bottom:1px solid var(--line);background:var(--soft)}
+.sh .t{font-family:ui-monospace,Menlo,monospace;font-size:12.5px;color:var(--muted)}
+.sh .k{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700}
+.sh .ti{font-weight:700}
+.tag{display:inline-block;font-size:11.5px;font-weight:700;border-radius:6px;padding:2px 6px;background:var(--gold);color:#fff;margin-top:4px}
+.slot{padding:10px 12px;border-bottom:1px solid var(--line)}
+.slot:last-child{border-bottom:0}
+.slot .n{font-weight:700}
+.slot .m{font-size:12.5px;color:var(--muted)}
+.acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.done{font-size:13px;font-weight:700;color:var(--good);margin-top:6px}
+.done.neg{color:var(--bad)}
+.row{display:grid;grid-template-columns:auto 1fr auto;gap:8px;align-items:center;padding:9px 12px;border-bottom:1px solid var(--line);font-size:14px}
+.row:last-child{border-bottom:0}
+.p{font-family:ui-monospace,Menlo,monospace;font-weight:700;min-width:38px;text-align:center}
+.pos{color:var(--good)}.neg{color:var(--bad)}
+.x{text-decoration:line-through;color:var(--muted)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px))}
+.bar .in{max-width:640px;margin:0 auto;display:flex;gap:8px}
+.bar .btn{flex:1}
+.toast{position:fixed;left:16px;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));max-width:608px;margin:0 auto;padding:14px 16px;border-radius:12px;font-weight:700;color:#fff;background:var(--good);box-shadow:0 6px 24px rgba(0,0,0,.25);z-index:20}
+.toast.err{background:var(--bad)}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;z-index:30}
+.sheet .box{background:var(--card);width:100%;max-width:640px;margin:0 auto;border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px))}
+.sheet .big{font-size:18px;font-weight:800;margin:4px 0 6px}
+.sheet .acts .btn{flex:1;padding:14px}
+.empty{padding:16px;color:var(--muted);text-align:center}
+.muted{color:var(--muted)}
+[hidden]{display:none!important}
+.res{max-height:260px;overflow:auto}
+.res button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:10px 12px}
+label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:10px 0 5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Fanta<span>SIN</span> · Arbitri</h1>
+    <div class="who" id="who"></div>
+  </header>
+
+  <section id="login">
+    <h2>Accesso</h2>
+    <label for="pin">Il tuo PIN</label>
+    <input id="pin" inputmode="numeric" autocomplete="off" placeholder="PIN a 4 cifre">
+    <button class="btn pri" id="go" style="width:100%;margin-top:10px">Entra</button>
+    <p class="muted" style="font-size:13px">Il PIN te lo dà il responsabile degli arbitri.</p>
+  </section>
+
+  <section id="main" hidden>
+    <h2>Giorno</h2>
+    <div class="chips" id="days"></div>
+    <div id="salaBox" hidden>
+      <label for="sala">Sala</label>
+      <select id="sala"></select>
+    </div>
+    <h2 id="salaTitle">Programma</h2>
+    <div id="prog"><div class="empty">Caricamento…</div></div>
+
+    <h2>Registrazioni</h2>
+    <div class="card" id="recent"><div class="empty">Nessuna registrazione.</div></div>
+
+    <div id="orgBox" hidden>
+      <h2>Premi e poster (organizzatori)</h2>
+      <div class="card" style="padding:12px">
+        <label for="orgSearch">Relatore</label>
+        <input id="orgSearch" placeholder="Cerca per cognome">
+        <div class="res" id="orgRes"></div>
+        <div id="orgSel" class="muted" style="margin-top:8px"></div>
+        <div class="acts" id="orgActs"></div>
+      </div>
+      <h2>Risultati scommesse</h2>
+      <div class="card" style="padding:12px" id="betsBox"></div>
+    </div>
+  </section>
+</div>
+
+<div class="bar" id="bar" hidden><div class="in">
+  <button class="btn" id="undo">↶ Annulla ultimo</button>
+  <button class="btn" id="reload">Aggiorna</button>
+</div></div>
+<div class="toast" id="toast" hidden></div>
+<div class="sheet" id="sheet" hidden><div class="box">
+  <div class="muted" id="shSub"></div>
+  <div class="big" id="shBig"></div>
+  <div class="acts"><button class="btn" id="shNo">Annulla</button><button class="btn pri" id="shYes">Conferma</button></div>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const S={pin:"",me:null,day:0,sala:"",ev:{},roster:[],sessions:[],data:null,orgPick:null};
+const ROLE={REL:"Relazione",MOD:"Moderazione",COM:"Comunicazione orale"};
+function h(t,a,...k){const e=document.createElement(t);for(const[x,v]of Object.entries(a||{})){if(v==null||v===false)continue;if(x==="text")e.textContent=v;else if(x==="class")e.className=v;else if(x.startsWith("on"))e.addEventListener(x.slice(2),v);else e.setAttribute(x,v);}for(const c of k.flat())if(c!=null)e.append(c.nodeType?c:document.createTextNode(c));return e;}
+const fmt=n=>(n>0?"+":"")+n;
+function toast(m,err){const t=$("toast");t.textContent=m;t.className="toast"+(err?" err":"");t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,err?4500:3000);}
+function run(fn,...args){return new Promise((res,rej)=>google.script.run.withSuccessHandler(res).withFailureHandler(e=>rej(e))[fn](...args));}
+function errMsg(e){return String((e&&e.message)||e).replace(/^Error:\s*/,"");}
+function ask(sub,big){return new Promise(res=>{$("shSub").textContent=sub;$("shBig").textContent=big;$("sheet").hidden=false;
+  $("shYes").onclick=()=>{$("sheet").hidden=true;res(true)};$("shNo").onclick=()=>{$("sheet").hidden=true;res(false)};});}
+
+async function login(pin){
+  $("go").disabled=true;
+  try{
+    const r=await run("arbLogin",pin);
+    S.pin=pin;S.me=r.me;S.roster=r.roster;S.sessions=r.sessions;S.day=r.today;S.days=r.days;
+    r.eventi.forEach(e=>S.ev[e.code]=e);
+    try{localStorage.setItem("fs-pin",pin);}catch(e){}
+    S.sala=S.me.all?(sessionStorage.getItem?.("fs-sala")||"Auditorium"):S.me.sala;
+    $("who").textContent=S.me.name+" · "+(S.me.all?(S.me.org?"organizzatore":"responsabile"):S.me.sala);
+    $("login").hidden=true;$("main").hidden=false;$("bar").hidden=false;
+    $("salaBox").hidden=!S.me.all;$("orgBox").hidden=!S.me.org;
+    $("sala").replaceChildren(...r.sale.map(s=>h("option",{value:s,text:s})));$("sala").value=S.sala;
+    renderDays();load();
+  }catch(e){toast(errMsg(e),true);try{localStorage.removeItem("fs-pin");}catch(_){} }
+  $("go").disabled=false;
+}
+function renderDays(){$("days").replaceChildren(...S.days.map((d,i)=>h("button",{class:"chip","aria-pressed":String(i===S.day),onclick:()=>{S.day=i;renderDays();load();}},d)));}
+async function load(){
+  $("salaTitle").textContent=S.sala+" · "+S.days[S.day];
+  try{S.data=await run("arbData",S.pin,S.day,S.sala);render();}catch(e){toast(errMsg(e),true);}
+}
+function render(){
+  const d=S.data,box=$("prog");box.replaceChildren();
+  if(!d.sessions.length)box.append(h("div",{class:"card"},h("div",{class:"empty",text:"Nessuna sessione in questa sala oggi."})));
+  for(const se of d.sessions){
+    const card=h("div",{class:"card"},h("div",{class:"sh"},
+      h("div",{class:"t",text:se.t+(se.e?"–"+se.e:"")}),h("div",{class:"k",text:se.k}),h("div",{class:"ti",text:se.ti}),
+      se.c?h("span",{class:"tag",text:"Sessione comune: valgono i bonus soggettivi"}):null));
+    const sl=d.slots.filter(x=>x.s===se.id);
+    if(!sl.length)card.append(h("div",{class:"empty",text:"Nessun relatore in programma."}));
+    for(const x of sl){
+      const row=h("div",{class:"slot"},h("div",{class:"n",text:x.n}),h("div",{class:"m",text:`${x.t} · ${ROLE[x.ro]||x.ro} · ${x.ti||""}`}));
+      if(x.done){const e=S.ev[x.done.e];row.append(h("div",{class:"done"+(e&&e.p<0?" neg":""),text:`✓ ${e?e.label:x.done.e} · ${x.done.by}`}));}
+      else{
+        const ok=S.ev[x.ro],ass=S.ev.ASS;
+        row.append(h("div",{class:"acts"},
+          ok?h("button",{class:"btn sm pri",onclick:()=>reg({slot:x.id,code:x.ro},`${ok.label} (${fmt(ok.p)})`,x.n)},"✓ "+ok.label+" "+fmt(ok.p)):null,
+          ass?h("button",{class:"btn sm",onclick:()=>reg({slot:x.id,code:"ASS"},`${ass.label} (${fmt(ass.p)})`,x.n)},ass.label+" "+fmt(ass.p)):null));
+      }
+      if(se.c){
+        const subj=Object.values(S.ev).filter(e=>e.cat==="soggettivo");
+        row.append(h("div",{class:"acts"},subj.map(e=>h("button",{class:"btn sm",onclick:()=>reg({sess:se.id,r:x.r,code:e.code},`${e.label} (${fmt(e.p)})`,x.n)},`${e.label} ${fmt(e.p)}`))));
+        if(x.subj.length)row.append(h("div",{class:"m",text:"Già dati: "+x.subj.map(c=>S.ev[c]?S.ev[c].label:c).join(", ")}));
+      }
+      card.append(row);
+    }
+    box.append(card);
+  }
+  const rc=$("recent");rc.replaceChildren();
+  if(!d.recent.length)rc.append(h("div",{class:"empty",text:"Nessuna registrazione."}));
+  for(const r of d.recent){
+    rc.append(h("div",{class:"row"},h("span",{class:"p "+(r.p>=0?"pos":"neg"),text:fmt(r.p)}),
+      h("div",{class:r.st==="ok"?"":"x"},h("div",{text:`${r.n} · ${S.ev[r.e]?S.ev[r.e].label:r.e}`}),h("div",{class:"muted",style:"font-size:12px",text:`${r.d} ${r.t} · ${r.sala} · ${r.by}`})),
+      r.st==="ok"&&S.me.all?h("button",{class:"btn sm",onclick:()=>annulla(r)},"Annulla"):h("span")));
+  }
+  if(S.me.org)renderBets();
+}
+async function reg(req,label,name){
+  if(!await ask(name,label))return;
+  try{const r=await run("arbRegistra",S.pin,req);toast("Registrato: "+r.msg);await load();}catch(e){toast(errMsg(e),true);}
+}
+async function annulla(r){
+  if(!await ask(`${r.n} · ${r.sala}`,"Annullare questa registrazione?"))return;
+  try{const x=await run("arbAnnulla",S.pin,r.id);toast(x.msg);await load();}catch(e){toast(errMsg(e),true);}
+}
+$("undo").onclick=async()=>{
+  if(!await ask("La tua ultima registrazione","Annullarla?"))return;
+  try{const x=await run("arbAnnullaUltimo",S.pin);toast(x.msg);await load();}catch(e){toast(errMsg(e),true);}
+};
+$("reload").onclick=load;
+$("sala").onchange=e=>{S.sala=e.target.value;try{sessionStorage.setItem("fs-sala",S.sala);}catch(_){}load();};
+$("go").onclick=()=>login($("pin").value.trim());
+$("pin").addEventListener("keydown",e=>{if(e.key==="Enter")login($("pin").value.trim());});
+
+/* organizzatori */
+const nrm=s=>(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+$("orgSearch").oninput=()=>{
+  const q=nrm($("orgSearch").value.trim()),box=$("orgRes");box.replaceChildren();if(q.length<2)return;
+  S.roster.filter(r=>nrm(r[1]+" "+r[2]).includes(q)).slice(0,15).forEach(r=>box.append(h("button",{onclick:()=>{S.orgPick=r;$("orgSearch").value="";box.replaceChildren();renderOrg();}},`${r[1]}${r[2]?" · "+r[2]:""}`)));
+};
+function renderOrg(){
+  const r=S.orgPick;$("orgSel").textContent=r?"Selezionato: "+r[1]:"";
+  $("orgActs").replaceChildren(...(r?Object.values(S.ev).filter(e=>e.cat==="organizzatori").map(e=>h("button",{class:"btn sm pri",onclick:()=>reg({r:r[0],code:e.code},`${e.label} (${fmt(e.p)})`,r[1])},`${e.label} ${fmt(e.p)}`)):[]));
+}
+function renderBets(){
+  const box=$("betsBox");box.replaceChildren();
+  for(const b of S.data.bets){
+    const inp=h("input",{placeholder:b.type.startsWith("poster")?"Numero del poster vincitore, es. 123":b.type==="sessione"?"ID sessione, es. S045":"Cognome del relatore",value:b.result?b.result.replace(/^P/,""):""});
+    const hint=h("div",{class:"muted",style:"font-size:12.5px;margin-top:4px"});
+    const resolve=()=>{const v=inp.value.trim();if(!v)return "";
+      if(b.type.startsWith("poster"))return "P"+v.replace(/\D/g,"");
+      if(b.type==="sessione"){const s=S.sessions.find(x=>nrm(x[0])===nrm(v));return s?s[0]:"";}
+      const m=S.roster.filter(r=>nrm(r[1]).includes(nrm(v)));return m.length===1?m[0][0]:"";};
+    inp.oninput=()=>{const id=resolve();
+      if(b.type==="sessione"){const s=S.sessions.find(x=>x[0]===id);hint.textContent=s?`${s[1]} ${s[2]} · ${s[3]} · ${s[5]}`:"Scrivi l’ID (lo trovi nel foglio Sessioni)";}
+      else if(b.type==="relatore"){const m=S.roster.filter(r=>nrm(r[1]).includes(nrm(inp.value.trim())));hint.textContent=m.length===1?m[0][1]:m.length?`${m.length} risultati: scrivi di più`:"Nessun relatore";}
+      else hint.textContent=id?"Poster "+id.slice(1):"";};
+    box.append(h("label",{text:b.q+(b.result?" · attuale: "+b.result:"")}),inp,hint,
+      h("button",{class:"btn sm",style:"margin-top:6px",onclick:async()=>{const id=resolve();if(!id){toast("Valore non riconosciuto",true);return;}
+        if(!await ask(b.q,"Risultato: "+(hint.textContent||id)))return;
+        try{const x=await run("arbRisultato",S.pin,b.id,id);toast(x.msg);await load();}catch(e){toast(errMsg(e),true);}}},"Salva risultato"));
+  }
+}
+try{const p=localStorage.getItem("fs-pin");if(p){$("pin").value=p;login(p);}}catch(e){}
+</script>
+</body>
+</html>
