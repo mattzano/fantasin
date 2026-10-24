@@ -47,7 +47,10 @@ function sh_(name) {
 function rows_(name) {
   const s = sh_(name), n = s.getLastRow();
   if (n < 2) return [];
-  return s.getRange(2, 1, n - 1, HEAD[name].length).getValues();
+  const v = s.getRange(2, 1, n - 1, HEAD[name].length).getValues();
+  const dc = { Sessioni: 1, Programma: 2, Poster: 1, Log: 1 }[name];
+  if (dc != null) v.forEach(r => { r[dc] = dayFix_(r[dc]); });
+  return v;
 }
 function out_(o, cb) {
   const txt = JSON.stringify(o);
@@ -73,6 +76,22 @@ function todayIdx_() {
   return i < 0 ? (new Date() < new Date(DATES[0] + 'T00:00:00+02:00') ? 0 : 3) : i;
 }
 function asDate_(v) { return v instanceof Date ? v : (v ? new Date(v) : null); }
+function dayFix_(v) {
+  if (v instanceof Date) {
+    const i = [24, 25, 26, 27].indexOf(v.getDate());
+    return i >= 0 ? DAY_LABEL[i] : Utilities.formatDate(v, TZ, 'dd/MM');
+  }
+  return v;
+}
+function fixDays_() {
+  [['Sessioni', 2], ['Programma', 3], ['Poster', 2], ['Log', 2]].forEach(([name, col]) => {
+    const s = sh_(name), n = s.getLastRow();
+    if (n < 2) return;
+    const rg = s.getRange(2, col, n - 1, 1), v = rg.getValues();
+    if (v.some(r => r[0] instanceof Date)) rg.setNumberFormat('@').setValues(v.map(r => [dayFix_(r[0])]));
+  });
+}
+function safe_(o) { return JSON.parse(JSON.stringify(o)); }
 function bust_() { CacheService.getScriptCache().remove('state'); }
 function eventi_() {
   const m = {};
@@ -152,10 +171,10 @@ function setup() {
     const data = JSON.parse(UrlFetchApp.fetch(url).getContentText());
     const put = (name, rows) => { if (rows.length) sh_(name).getRange(2, 1, rows.length, rows[0].length).setValues(rows); };
     put('Relatori', data.roster.map(r => [r.id, r.n, r.c, r.p, r.k]));
-    put('Sessioni', data.sessions.map(s => [s.id, DAY_LABEL[s.d], "'" + s.t, "'" + s.e, s.sala, s.k, s.ti, s.c ? 'sì' : 'no']));
+    put('Sessioni', data.sessions.map(s => [s.id, "'" + DAY_LABEL[s.d], "'" + s.t, "'" + s.e, s.sala, s.k, s.ti, s.c ? 'sì' : 'no']));
     const names = {}; data.roster.forEach(r => names[r.id] = r.n);
-    put('Programma', data.slots.map(x => [x.id, x.s, DAY_LABEL[x.d], "'" + x.t, x.sala, x.r, names[x.r] || x.r, x.ro, x.ti, '']));
-    put('Poster', data.posters.map(p => [p.id, DAY_LABEL[p.d], p.n, p.ti, p.a]));
+    put('Programma', data.slots.map(x => [x.id, x.s, "'" + DAY_LABEL[x.d], "'" + x.t, x.sala, x.r, names[x.r] || x.r, x.ro, x.ti, '']));
+    put('Poster', data.posters.map(p => [p.id, "'" + DAY_LABEL[p.d], p.n, p.ti, p.a]));
   }
 
   // leaderboard formulas
@@ -163,6 +182,7 @@ function setup() {
   cl.getRange('B2').setFormula('=IFERROR(SORT(FILTER({Squadre!A2:A,Squadre!B2:B,Squadre!C2:C,Squadre!L2:L},Squadre!A2:A<>"",Squadre!I2:I="OK"),4,FALSE),)');
   cl.getRange('A2').setFormula('=ARRAYFORMULA(IF(E2:E="",,COUNTIF(E2:E,">"&E2:E)+1))');
 
+  fixDays_();
   protect_();
   SpreadsheetApp.flush();
   Logger.log('Setup completato. PIN arbitri nel foglio "Arbitri".');
@@ -332,10 +352,11 @@ function ref_(pin) {
 
 function arbLogin(pin) {
   const me = ref_(pin);
+  fixDays_();
   const roster = rows_('Relatori').map(r => [r[0], r[1], r[2]]);
   const sale = ['Auditorium', 'Sala 1', 'Sala 2', 'Sala 3', 'Sala 4', 'Sala 5', 'Sala 6', 'Sala 7', 'Sala 8', 'Sala 9'];
   const sessions = rows_('Sessioni').map(r => [r[0], r[1], String(r[2]), r[4], r[5], r[6]]);
-  return { me: me, roster: roster, sale: sale, today: todayIdx_(), days: DAY_LABEL, eventi: Object.values(eventi_()), sessions: sessions };
+  return safe_({ me: me, roster: roster, sale: sale, today: todayIdx_(), days: DAY_LABEL, eventi: Object.values(eventi_()), sessions: sessions });
 }
 
 function arbData(pin, day, sala) {
@@ -362,7 +383,7 @@ function arbData(pin, day, sala) {
     id: r[11], t: Utilities.formatDate(asDate_(r[0]) || new Date(), TZ, 'HH:mm'), d: r[1], sala: r[2], by: r[3], n: r[4], e: r[6], p: Number(r[8]) || 0, st: r[9]
   })).filter(x => me.all || x.by === me.name).slice(-40).reverse();
   const bets = me.org ? rows_('Scommesse').map(r => ({ id: r[0], q: r[1], type: r[2], result: String(r[4] || '') })) : [];
-  return { sala: sala, day: day, sessions: ses, slots: slots, recent: recent, bets: bets };
+  return safe_({ sala: sala, day: day, sessions: ses, slots: slots, recent: recent, bets: bets });
 }
 
 function arbRegistra(pin, req) {
@@ -395,7 +416,7 @@ function arbRegistra(pin, req) {
     }
     const name = (prices_()[rid] || {}).n || rid;
     const id = Utilities.getUuid().slice(0, 8);
-    sh_('Log').appendRow([new Date(), day, sala, me.name, name, rid, ev.code, ev.p, ev.p, 'ok', slotKey, id]);
+    sh_('Log').appendRow([new Date(), "'" + dayFix_(day), sala, me.name, name, rid, ev.code, ev.p, ev.p, 'ok', slotKey, id]);
     if (slotKey.startsWith('SL')) setSlotState_(slotKey, ev.code === 'ASS' ? 'assente' : 'confermato');
     recompute_(); bust_();
     const last = sh_('Log').getRange(sh_('Log').getLastRow(), 9).getValue();
