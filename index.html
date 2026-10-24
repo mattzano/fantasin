@@ -147,6 +147,8 @@ td.p{text-align:right;width:60px}
 .bcell.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
 .bcell.free{background:var(--soft);color:var(--muted);border-style:dashed}
 .bcell.win{box-shadow:0 0 0 2px var(--gold) inset}
+button.bcell{font:inherit;color:inherit;cursor:pointer;position:relative}
+.bcell.ok::after{content:"✓";position:absolute;top:2px;right:4px;font-size:10px;font-weight:700;color:var(--gold)}
 .bstat{display:flex;justify-content:space-between;align-items:center;margin:12px 2px;font-size:14px}
 </style>
 </head>
@@ -198,7 +200,7 @@ td.p{text-align:right;width:60px}
 
   <section data-view="bingo" hidden>
     <h2>Bingo</h2>
-    <p class="muted" style="font-size:13.5px">Le caselle si accendono da sole quando un arbitro sente la frase in una delle sessioni del gioco. <span id="bingoRule"></span></p>
+    <p class="muted" style="font-size:13.5px">Tocca una casella per segnarla quando senti la frase (tocca di nuovo per toglierla). La ✓ indica le frasi confermate dagli arbitri: solo quelle danno punti. <span id="bingoRule"></span></p>
     <div id="bingoBox"></div>
   </section>
 
@@ -440,6 +442,9 @@ async function saveTeam(){
 
 /* ---------- bingo ---------- */
 const LINES=(()=>{const L=[];for(let r=0;r<5;r++)L.push([0,1,2,3,4].map(c=>r*5+c));for(let c=0;c<5;c++)L.push([0,1,2,3,4].map(r=>r*5+c));L.push([0,6,12,18,24]);L.push([4,8,12,16,20]);return L;})();
+/* segnature manuali della cartella: solo sul dispositivo, i punti restano quelli confermati dagli arbitri */
+function bingoMarks(card){ try{ const m=JSON.parse(localStorage.getItem("fs-bingo:"+card.join(","))||"[]"); return new Set(Array.isArray(m)?m:[]); }catch(e){ return new Set(); } }
+function saveBingoMarks(card,m){ try{ localStorage.setItem("fs-bingo:"+card.join(","),JSON.stringify([...m])); }catch(e){} }
 function renderBingo(){
   $("bingoRule").textContent=`Ogni riga, colonna o diagonale vale ${fmt(S.cfg.bingoRiga)}; la cartella piena ${fmt(S.cfg.bingoPiena)} in più.`;
   const box=$("bingoBox"); box.replaceChildren();
@@ -447,10 +452,14 @@ function renderBingo(){
   if(!me||!me.card||me.card.length!==24){ box.append(h("div",{class:"card"},h("div",{class:"empty",text:S.loaded?"Invia la tua squadra per ricevere la cartella.":"Caricamento…"}))); return; }
   const B={}; S.bingo.forEach(b=>B[b.id]=b);
   const cells=[...me.card.slice(0,12),"FREE",...me.card.slice(12)];
-  const on=cells.map(id=>id==="FREE"||!!(B[id]&&B[id].on));
+  const marks=bingoMarks(me.card);
+  const on=cells.map(id=>id==="FREE"||marks.has(id));
   const win=new Set(); let lines=0; LINES.forEach(l=>{ if(l.every(i=>on[i])){ lines++; l.forEach(i=>win.add(i)); } });
   const grid=h("div",{class:"bgrid5"});
-  cells.forEach((id,i)=>grid.append(h("div",{class:"bcell"+(on[i]?" on":"")+(win.has(i)?" win":"")+(id==="FREE"?" free":""),title:B[id]&&B[id].at?"Sentita "+B[id].at:""},id==="FREE"?"Pausa caffè ☕":(B[id]?B[id].t:"?"))));
+  cells.forEach((id,i)=>{ const ok=!!(B[id]&&B[id].on), cls="bcell"+(on[i]?" on":"")+(win.has(i)?" win":"")+(ok?" ok":"");
+    if(id==="FREE") return grid.append(h("div",{class:cls+" free"},"Pausa caffè ☕"));
+    grid.append(h("button",{type:"button",class:cls,"aria-pressed":String(on[i]),title:ok?"Confermata dagli arbitri"+(B[id].at?" · "+B[id].at:""):"",
+      onclick:()=>{ marks.has(id)?marks.delete(id):marks.add(id); saveBingoMarks(me.card,marks); renderBingo(); }},B[id]?B[id].t:"?")); });
   const marked=on.filter(Boolean).length-1;
   box.append(grid,h("div",{class:"bstat"},h("b",{text:`${lines} ${lines===1?"linea":"linee"} · ${fmt(me.pg||0)} punti`}),h("span",{class:"muted",text:`${marked}/24 caselle`})));
   const recent=S.bingo.filter(b=>b.on);
