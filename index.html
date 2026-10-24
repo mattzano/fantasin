@@ -45,7 +45,7 @@ button{cursor:pointer}
 .mine{text-align:right;font-family:var(--f-mono);font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
 .mine b{display:block;font-family:var(--f-display);font-stretch:100%;font-size:24px;color:var(--ink);letter-spacing:0;font-variant-numeric:tabular-nums}
 .eeg{display:block;width:100%;height:22px;margin-top:6px}
-.eeg path{fill:none;stroke:var(--accent);stroke-width:1.4;stroke-linejoin:round;stroke-linecap:round}
+.eeg path{fill:none;stroke:var(--accent);stroke-width:1;stroke-linejoin:round;stroke-linecap:round}
 .unoff{font-size:11px;color:var(--muted);margin-top:2px}
 
 /* tabs */
@@ -139,10 +139,16 @@ td.p{text-align:right;width:60px}
 .switch input{width:20px;height:20px}
 .split{display:grid;gap:8px;grid-template-columns:1fr 1fr}
 @media (max-width:420px){.brand h1{font-size:22px}.split{grid-template-columns:1fr}}
-@media (prefers-reduced-motion:no-preference){.eeg path{stroke-dasharray:900;stroke-dashoffset:900;animation:draw 2.4s ease-out forwards}@keyframes draw{to{stroke-dashoffset:0}}}
+@media (prefers-reduced-motion:no-preference){.eeg path{stroke-dasharray:6000;stroke-dashoffset:6000;animation:draw 3s ease-out forwards}@keyframes draw{to{stroke-dashoffset:0}}}
 
 .row.me{background:color-mix(in srgb,var(--accent) 7%,transparent)}
 .mine span{display:block}
+.bgrid5{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+.bcell{aspect-ratio:1;display:flex;align-items:center;justify-content:center;text-align:center;padding:3px;background:var(--card);border:1.5px solid var(--line);border-radius:8px;font-size:clamp(9px,2.6vw,12.5px);line-height:1.15;font-weight:500;overflow-wrap:anywhere;hyphens:auto}
+.bcell.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.bcell.free{background:var(--soft);color:var(--muted);border-style:dashed}
+.bcell.win{box-shadow:0 0 0 2px var(--gold) inset}
+.bstat{display:flex;justify-content:space-between;align-items:center;margin:12px 2px;font-size:14px}
 </style>
 </head>
 <body>
@@ -153,7 +159,7 @@ td.p{text-align:right;width:60px}
         <h1>Fanta<span>SIN</span></h1>
         <small>Firenze · Fortezza da Basso · 24–27 ottobre 2026</small>
       </div>
-      <div class="mine" id="mine"><span id="mineLabel">La tua squadra</span><b class="num" id="mineScore">–</b><span id="minePos"></span></div>
+      <div class="mine" id="mine"><span>La tua squadra</span><b class="num" id="mineScore">–</b><span id="minePos"></span></div>
     </div>
     <svg class="eeg" viewBox="0 0 700 22" preserveAspectRatio="none" aria-hidden="true"><path id="eegPath" d=""></path></svg>
   </header>
@@ -181,13 +187,20 @@ td.p{text-align:right;width:60px}
     <div class="budget"><div class="bar" id="bar"><i></i></div><span class="num" id="budgetTxt">0 / 100</span></div>
     <div class="muted" style="font-size:13px" id="teamHelp"></div>
     <div class="card list slots" id="slots" style="margin-top:10px"></div>
-    <label class="f" for="pickSearch">Aggiungi un relatore</label>
-    <input type="search" id="pickSearch" placeholder="Cerca per cognome, città o argomento">
-    <div class="card list results" id="pickResults" style="margin-top:8px" hidden></div>
     <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
       <button class="btn pri" id="saveTeam">Invia squadra</button>
       <span class="muted" id="saveState" style="font-size:13px"></span>
     </div>
+    <h3 id="relTitle">Relatori</h3>
+    <div class="card list art" id="relList"><div class="empty">Caricamento…</div></div>
+    <h3 id="modTitle">Moderatori</h3>
+    <div class="card list art" id="modList"><div class="empty">Caricamento…</div></div>
+  </section>
+
+  <section data-view="bingo" hidden>
+    <h2>Bingo</h2>
+    <p class="muted" style="font-size:13.5px">Le caselle si accendono da sole quando un arbitro sente la frase in una delle sessioni del gioco. <span id="bingoRule"></span></p>
+    <div id="bingoBox"></div>
   </section>
 
   <section data-view="scommesse" hidden>
@@ -196,29 +209,16 @@ td.p{text-align:right;width:60px}
     <div id="betList"></div>
   </section>
 
-  <section data-view="relatori" hidden>
-    <h2>Relatori</h2>
-    <div class="toolbar">
-      <input type="search" id="artSearch" placeholder="Cerca nome, città, argomento">
-      <select id="artSort" aria-label="Ordina">
-        <option value="az">A–Z</option>
-        <option value="pts">Più punti</option>
-        <option value="price">Più cari</option>
-      </select>
-    </div>
-    <div class="chips" id="dayChips" style="margin-bottom:10px"></div>
-    <div class="muted" id="artCount" style="font-size:13px;margin-bottom:6px"></div>
-    <div class="card list art" id="artList"><div class="empty">Caricamento…</div></div>
-  </section>
-
   <section data-view="regole" hidden>
     <h2>Regolamento</h2>
     <div class="card" style="padding:12px 14px">
-      <p><b>Squadra.</b> <span id="ruleTeam">3 relatori con 100 Neuroni</span>. Il prezzo dipende da quante volte la persona compare nel programma. Uno dei tre è il capitano: i suoi punti contano doppio. Dopo la scadenza la squadra non si modifica più.</p>
-      <p><b>Sessioni parallele.</b> Contano solo gli eventi oggettivi, già caricati dal programma: l’arbitro della sala li conferma.</p>
-      <p><b>Sessioni comuni</b> (inaugurazione, plenarie, letture, assemblea). Valgono anche i bonus soggettivi.</p>
-      <p style="margin:0"><b>Tetto giornaliero.</b> Ogni tipo di evento ha un massimo di punti al giorno per relatore, così chi ha tante sessioni non vince da solo.</p>
+      <p><b>Squadra.</b> <span id="ruleTeam">3 relatori e 2 moderatori con 100 Neuroni</span>. Uno dei cinque è il capitano: i suoi punti contano doppio. Dopo la scadenza la squadra non si modifica più.</p>
+      <p><b>Sessioni del gioco.</b> L’inaugurazione, le 5 plenarie e le 5 letture che non si sovrappongono ad altre letture. In tutte valgono anche i bonus soggettivi.</p>
+      <p><b>Bingo.</b> Ogni squadra riceve una cartella. Righe, colonne e diagonali complete danno punti, verificati dagli arbitri.</p>
+      <p style="margin:0"><b>Tetto giornaliero.</b> Ogni tipo di evento ha un massimo di punti al giorno per persona.</p>
     </div>
+    <h3>Programma del gioco</h3>
+    <div class="card list" id="progList"></div>
     <h3>Eventi e punti</h3>
     <div class="card"><table id="evTable"><tr><td class="muted">Caricamento…</td></tr></table></div>
     <h3>Buon senso</h3>
@@ -237,15 +237,16 @@ td.p{text-align:right;width:60px}
 /* URL dell'app web Apps Script (finisce con /exec) */
 const API_URL = "https://script.google.com/macros/s/AKfycbxFgJ70EzlfNBBfHL_K4BQNZoe2X_gHGmBiQIjxyB4Y6ewX1fnxcz_zMFo_Sh9u1WmOxA/exec";
 const DAYS = ["Sab 24","Dom 25","Lun 26","Mar 27"];
-const CAT_LABEL = {oggettivo:"Oggettivo · tutte le sessioni", soggettivo:"Soggettivo · solo sessioni comuni", organizzatori:"Solo organizzatori"};
+const CAT_LABEL = {oggettivo:"Oggettivo", soggettivo:"Soggettivo", organizzatori:"Solo organizzatori"};
+const RL = {REL:"Relazione",MOD:"Moderazione",COM:"Comunicazione"};
 
 const ART = new Map(), SESS = new Map(), POST = [];
 const S = {
-  cfg:{budget:100,size:3,deadline:null,aree:[]}, teams:[], pts:{}, feed:[], bets:[], mybets:[], eventi:[],
-  draft:{nick:"",area:"",sede:"",picks:[],cap:null}, dirty:false, token:null, uid:null, view:"classifica",
-  day:null, open:new Set(), lastOk:0, loaded:false, now:Date.now(), skew:0
+  cfg:{budget:100,nrel:3,nmod:2,deadline:null,aree:[],bingoRiga:10,bingoPiena:30}, teams:[], pts:{}, feed:[], bets:[], mybets:[], eventi:[], bingo:[],
+  draft:{nick:"",area:"",sede:"",rel:[],mods:[],cap:null}, dirty:false, token:null, uid:null, view:"classifica",
+  open:new Set(), lastOk:0, loaded:false, skew:0
 };
-try{ const d=JSON.parse(localStorage.getItem("fs-draft")||"null"); if(d&&Array.isArray(d.picks)) S.draft={...S.draft,...d}; }catch(e){}
+try{ const d=JSON.parse(localStorage.getItem("fs-draft3")||"null"); if(d&&Array.isArray(d.rel)) S.draft={...S.draft,...d}; }catch(e){}
 
 const $ = s => document.getElementById(s);
 function h(tag, attrs={}, ...kids){
@@ -263,17 +264,26 @@ const norm = s => (s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
 const now = () => Date.now()+S.skew;
 function toast(m){ const t=$("toast"); t.textContent=m; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,3000); }
 function banner(m){ const b=$("banner"); b.hidden=!m; b.textContent=m||""; }
-function when(ms){ if(!ms) return ""; const d=new Date(ms); return d.toLocaleString("it-IT",{weekday:"short",day:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Europe/Rome"}); }
-function saveDraft(){ try{ localStorage.setItem("fs-draft",JSON.stringify(S.draft)); }catch(e){} }
-(function(){ let d="M0 11", x=0; const seq=[0,0,1,-1,0,0,0,7,-9,3,0,0,1,0,-2,0,0];
-  while(x<700){ for(const y of seq){ x+=7; d+=` L${x} ${11-y}`; if(x>=700)break; } } $("eegPath").setAttribute("d",d); })();
+function when(ms){ if(!ms) return ""; return new Date(ms).toLocaleString("it-IT",{weekday:"short",day:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Europe/Rome"}); }
+function saveDraft(){ try{ localStorage.setItem("fs-draft3",JSON.stringify(S.draft)); }catch(e){} }
+(function(){ /* tracciato EEG: alfa a fusi + theta + beta + rumore, con seme fisso */
+  let seed=7; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647-.5; };
+  const W=700, N=700, y0=11; let d="", n1=0, n2=0;
+  for(let i=0;i<=N;i++){
+    const x=i*W/N, t=i/N*14;
+    const spindle=.55+.45*Math.sin(t*0.9+1.3)*Math.sin(t*0.37);
+    n1=.85*n1+rnd()*1.2; n2=.6*n2+rnd()*0.9;
+    const y=y0+ 4.2*spindle*Math.sin(t*2*Math.PI*1.0+0.4) + 1.6*Math.sin(t*2*Math.PI*0.42+2) + 0.9*Math.sin(t*2*Math.PI*2.6) + n1 + n2;
+    d+=(i?" L":"M")+x.toFixed(1)+" "+Math.max(1,Math.min(21,y)).toFixed(2);
+  }
+  $("eegPath").setAttribute("d",d); })();
 
 /* ---------- tabs ---------- */
 const TABS=[
   {id:"classifica",l:"Classifica",i:'<path d="M5 20V10M12 20V4M19 20v-7"/>'},
   {id:"squadra",l:"Squadra",i:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c.6-3.5 3-5.5 6-5.5s5.4 2 6 5.5"/><path d="M16 4.5a3 3 0 0 1 0 6M18 14.6c1.7.7 2.8 2.6 3 5.4"/>'},
+  {id:"bingo",l:"Bingo",i:'<rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 9.3h16M4 14.7h16M9.3 4v16M14.7 4v16"/>'},
   {id:"scommesse",l:"Scommesse",i:'<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1.3"/><circle cx="15" cy="15" r="1.3"/><circle cx="15" cy="9" r="1.3"/><circle cx="9" cy="15" r="1.3"/>'},
-  {id:"relatori",l:"Relatori",i:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>'},
   {id:"regole",l:"Regole",i:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 12h7M9 16h7"/>'}
 ];
 function renderTabs(){
@@ -289,17 +299,19 @@ function go(v){
 }
 window.addEventListener("hashchange",()=>{ const v=location.hash.slice(1); if(v&&v!==S.view) go(v); });
 
-/* ---------- scoring helpers ---------- */
+/* ---------- helpers ---------- */
 const P = id => S.pts[id]||0;
+const picksOf = t => [...(t.rel||[]),...(t.mods||[])].filter(Boolean);
 function pickPts(t,id){ return P(id)*(id===t.cap?2:1); }
-function cost(picks){ return picks.reduce((s,a)=>s+(ART.get(a)?.price||0),0); }
+function cost(ids){ return ids.reduce((s,a)=>s+(ART.get(a)?.price||0),0); }
 function locked(){ return S.cfg.deadline && now()>S.cfg.deadline; }
+const myTeam = () => S.teams.find(t=>t.pid===S.uid);
 
 /* ---------- leaderboard ---------- */
 function renderBoard(){
   const teams=S.teams.filter(t=>t.ok).sort((a,b)=>a.pos-b.pos||a.nick.localeCompare(b.nick));
   const box=$("board"); box.replaceChildren();
-  if(!S.loaded){ box.append(h("div",{class:"empty",text:"Caricamento della classifica…"})); }
+  if(!S.loaded) box.append(h("div",{class:"empty",text:"Caricamento della classifica…"}));
   else if(!teams.length) box.append(h("div",{class:"empty",text:"Ancora nessuna squadra. Crea la tua nella scheda “Squadra”."}));
   for(const t of teams){
     const open=S.open.has("t"+t.pid), mine=t.pid===S.uid;
@@ -311,14 +323,15 @@ function renderBoard(){
     row.addEventListener("click",tg); row.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();tg();} });
     if(open){
       const pk=h("div",{class:"picks"});
-      for(const a of t.picks){ const ar=ART.get(a), p=pickPts(t,a);
-        pk.append(h("div",{},h("span",{class:a===t.cap?"cap":""},(ar?ar.n:a)+(a===t.cap?" ★ capitano":"")),h("span",{class:"pts "+(p>0?"pos":p<0?"neg":""),text:fmt(p)}))); }
+      for(const a of picksOf(t)){ const ar=ART.get(a), p=pickPts(t,a), isMod=(t.mods||[]).includes(a);
+        pk.append(h("div",{},h("span",{class:a===t.cap?"cap":""},(ar?ar.n:a)+(isMod?" · mod.":"")+(a===t.cap?" ★":"")),h("span",{class:"pts "+(p>0?"pos":p<0?"neg":""),text:fmt(p)}))); }
+      if(t.pg) pk.append(h("div",{},h("span",{text:"Bingo"}),h("span",{class:"pts pos",text:fmt(t.pg)})));
       if(t.pb) pk.append(h("div",{},h("span",{text:"Scommesse"}),h("span",{class:"pts pos",text:fmt(t.pb)})));
       row.append(pk);
     }
     box.append(row);
   }
-  const me=S.teams.find(t=>t.pid===S.uid);
+  const me=myTeam();
   $("mineScore").textContent = me ? me.tot : "–";
   $("minePos").textContent = me && me.ok ? `${me.pos}° su ${teams.length}` : (me ? "fuori budget" : "");
   $("updated").textContent = S.lastOk ? "Aggiornata alle "+new Date(S.lastOk).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})+" · si aggiorna ogni 30 secondi" : "";
@@ -335,87 +348,115 @@ function renderFeed(){
 
 /* ---------- team ---------- */
 function teamProblems(d){
-  const p=[], n=S.cfg.size;
+  const p=[];
   if(!d.nick.trim() || d.nick.trim().length<2) p.push("Scegli un nickname");
-  if(d.picks.length<n) p.push(`Mancano ${n-d.picks.length} relatori`);
-  if(cost(d.picks)>S.cfg.budget) p.push(`Budget superato di ${cost(d.picks)-S.cfg.budget} Neuroni`);
-  if(d.picks.length===n && !d.cap) p.push("Scegli il capitano (★)");
+  if(d.rel.length<S.cfg.nrel) p.push(`Mancano ${S.cfg.nrel-d.rel.length} relatori`);
+  if(d.mods.length<S.cfg.nmod) p.push(`Mancano ${S.cfg.nmod-d.mods.length} moderatori`);
+  const c=cost([...d.rel,...d.mods]); if(c>S.cfg.budget) p.push(`Budget superato di ${c-S.cfg.budget} Neuroni`);
+  if(!d.cap && d.rel.length===S.cfg.nrel && d.mods.length===S.cfg.nmod) p.push("Scegli il capitano (★)");
   return p;
 }
+function slotRow(i,a,kind){
+  const d=S.draft, lock=locked(), ar=a&&ART.get(a);
+  if(!ar) return h("div",{class:"row"},h("span",{class:"slotn",text:i}),h("div",{class:"main muted",text:kind==="rel"?"Relatore da scegliere":"Moderatore da scegliere"}),h("span"),h("span"));
+  return h("div",{class:"row"},h("span",{class:"slotn",text:i}),
+    h("div",{class:"main"},h("div",{class:"nm",text:ar.n}),h("div",{class:"sub",text:`${kind==="rel"?"Relatore":"Moderatore"} · ${ar.price} Neuroni · ${fmt(P(a))} pt`})),
+    h("button",{class:"star",type:"button","aria-pressed":String(d.cap===a),"aria-label":"Capitano",disabled:lock,onclick:()=>{d.cap=a;dirty();}},"★ C"),
+    h("button",{class:"icon-btn",type:"button","aria-label":"Togli",disabled:lock,onclick:()=>{d[kind==="rel"?"rel":"mods"]=d[kind==="rel"?"rel":"mods"].filter(x=>x!==a); if(d.cap===a)d.cap=null; dirty();}},"−"));
+}
+function candRow(a,kind){
+  const d=S.draft, lock=locked(), list=kind==="rel"?d.rel:d.mods, max=kind==="rel"?S.cfg.nrel:S.cfg.nmod;
+  const inT=d.rel.includes(a.id)||d.mods.includes(a.id), left=S.cfg.budget-cost([...d.rel,...d.mods]);
+  const k="c"+kind+a.id, open=S.open.has(k), p=P(a.id);
+  const apps=a.apps.filter(x=>kind==="rel"?x.ro==="REL":x.ro==="MOD");
+  const row=h("div",{class:"row",style:"grid-template-columns:1fr auto auto auto"},
+    h("div",{class:"main",role:"button",tabindex:"0",onclick:()=>{open?S.open.delete(k):S.open.add(k); renderTeam();}},
+      h("div",{class:"nm",text:a.n}),h("div",{class:"sub",text:apps.map(x=>{const s=SESS.get(x.s);return `${DAYS[x.d]} ${x.t}${s?" · "+s.sala:""}`;}).join(" · ")})),
+    h("span",{class:"pts "+(p>0?"pos":p<0?"neg":"muted"),text:fmt(p)}),
+    h("span",{class:"price",text:a.price+" N"}),
+    h("button",{class:"icon-btn",type:"button","aria-label":"Aggiungi",disabled:lock||inT||list.length>=max||a.price>left,title:a.price>left?"Budget insufficiente":"",onclick:()=>{list.push(a.id); dirty();}},inT?"✓":"+"));
+  if(open){ const ap=h("div",{class:"apps"});
+    for(const x of apps){ const s=SESS.get(x.s); ap.append(h("div",{},h("span",{class:"when",text:`${DAYS[x.d]} ${x.t}`}),h("span",{},h("span",{class:"role",text:(s?s.k+" · "+s.sala:"")+" "}),x.ti||(s?s.ti:"")))); }
+    row.append(ap); }
+  return row;
+}
 function renderTeam(){
-  const d=S.draft, lock=locked(), n=S.cfg.size;
+  const d=S.draft, lock=locked(), n=S.cfg.nrel+S.cfg.nmod;
   const dn=$("deadlineNote");
   dn.textContent = lock ? "Tempo scaduto: le squadre non si possono più modificare." : (S.cfg.deadline ? "Puoi inviare e modificare la squadra fino a "+when(S.cfg.deadline)+"." : "");
   dn.hidden=!dn.textContent;
-  for(const id of ["nick","area","sede","pickSearch"]) $(id).disabled=lock;
+  for(const id of ["nick","area","sede"]) $(id).disabled=lock;
   if(document.activeElement!==$("nick")) $("nick").value=d.nick||"";
   if(document.activeElement!==$("sede")) $("sede").value=d.sede||"";
-  if($("area").options.length!==S.cfg.aree.length+1){ $("area").replaceChildren(h("option",{value:"",text:"Scegli…"}),...S.cfg.aree.map(a=>h("option",{value:a,text:a}))); }
+  if($("area").options.length!==S.cfg.aree.length+1) $("area").replaceChildren(h("option",{value:"",text:"Scegli…"}),...S.cfg.aree.map(a=>h("option",{value:a,text:a})));
   $("area").value=d.area||"";
-  $("teamHelp").textContent=`${n} relatori, ${S.cfg.budget} Neuroni in tutto. Tocca ★ per il capitano: i suoi punti contano doppio.`;
-  $("ruleTeam").textContent=`${n} relatori con ${S.cfg.budget} Neuroni`;
-  const spent=cost(d.picks), bar=$("bar");
+  const txt=`${S.cfg.nrel} relatori e ${S.cfg.nmod} moderatori con ${S.cfg.budget} Neuroni`;
+  $("teamHelp").textContent=txt+". Tocca ★ per il capitano: i suoi punti contano doppio.";
+  $("ruleTeam").textContent=txt;
+  const ids=[...d.rel,...d.mods], spent=cost(ids), bar=$("bar");
   bar.querySelector("i").style.width=Math.min(100,spent/S.cfg.budget*100)+"%"; bar.classList.toggle("over",spent>S.cfg.budget);
   $("budgetTxt").textContent=`${spent} / ${S.cfg.budget}`;
   const box=$("slots"); box.replaceChildren();
-  for(let i=0;i<n;i++){
-    const a=d.picks[i], ar=a&&ART.get(a);
-    if(!ar){ box.append(h("div",{class:"row"},h("span",{class:"slotn",text:i+1}),h("div",{class:"main muted",text:"Posto libero"}),h("span"),h("span"))); continue; }
-    box.append(h("div",{class:"row"},h("span",{class:"slotn",text:i+1}),
-      h("div",{class:"main"},h("div",{class:"nm",text:ar.n}),h("div",{class:"sub",text:`${ar.c?ar.c+" · ":""}${ar.price} Neuroni · ${fmt(P(a))} pt`})),
-      h("button",{class:"star",type:"button","aria-pressed":String(d.cap===a),"aria-label":"Capitano",disabled:lock,onclick:()=>{d.cap=a;dirty();}},"★ C"),
-      h("button",{class:"icon-btn",type:"button","aria-label":"Togli",disabled:lock,onclick:()=>{d.picks=d.picks.filter(x=>x!==a); if(d.cap===a)d.cap=null; dirty();}},"−")));
-  }
-  const pr=teamProblems(d), saved=S.teams.find(t=>t.pid===S.uid);
+  for(let i=0;i<S.cfg.nrel;i++) box.append(slotRow(i+1,d.rel[i],"rel"));
+  for(let i=0;i<S.cfg.nmod;i++) box.append(slotRow(S.cfg.nrel+i+1,d.mods[i],"mod"));
+  const pr=teamProblems(d), saved=myTeam();
   $("saveTeam").disabled=lock||pr.length>0||!S.loaded;
   $("saveTeam").textContent=saved?"Aggiorna squadra":"Invia squadra";
   $("saveState").textContent= lock?"":(pr[0]||(S.dirty||!saved?"Non ancora inviata":"Inviata ✓"));
-  renderPick();
+  const rel=[...ART.values()].filter(a=>a.rel), mod=[...ART.values()].filter(a=>a.mod);
+  $("relTitle").textContent=`Relatori (${d.rel.length}/${S.cfg.nrel})`; $("modTitle").textContent=`Moderatori (${d.mods.length}/${S.cfg.nmod})`;
+  $("relList").replaceChildren(...(rel.length?rel.map(a=>candRow(a,"rel")):[h("div",{class:"empty",text:"Caricamento…"})]));
+  $("modList").replaceChildren(...(mod.length?mod.map(a=>candRow(a,"mod")):[h("div",{class:"empty",text:"Caricamento…"})]));
 }
 function dirty(){ S.dirty=true; saveDraft(); renderTeam(); }
-function renderPick(){
-  const q=norm($("pickSearch").value.trim()), box=$("pickResults");
-  if(q.length<2){ box.hidden=true; return; }
-  const d=S.draft, left=S.cfg.budget-cost(d.picks);
-  const res=[...ART.values()].filter(a=>a.q.includes(q)).slice(0,30);
-  box.replaceChildren(); box.hidden=false;
-  if(!res.length){ box.append(h("div",{class:"empty",text:"Nessun risultato"})); return; }
-  for(const a of res){
-    const inT=d.picks.includes(a.id), full=d.picks.length>=S.cfg.size, much=a.price>left;
-    box.append(h("div",{class:"row",style:"grid-template-columns:1fr auto auto"},
-      h("div",{class:"main"},h("div",{class:"nm",text:a.n}),h("div",{class:"sub",text:(a.c?a.c+" · ":"")+a.apps.length+(a.apps.length===1?" presenza":" presenze")})),
-      h("span",{class:"price",text:a.price+" N"}),
-      h("button",{class:"icon-btn",type:"button","aria-label":"Aggiungi",disabled:inT||full||much,title:much?"Budget insufficiente":"",onclick:()=>{d.picks.push(a.id); if(d.picks.length===S.cfg.size)$("pickSearch").value=""; dirty();}},inT?"✓":"+")));
-  }
-}
 async function saveTeam(){
   const d=S.draft; $("saveTeam").disabled=true; $("saveState").textContent="Invio…";
   try{
-    const r=await post({action:"saveTeam",nick:d.nick.trim(),area:d.area,sede:d.sede.trim(),picks:d.picks,cap:d.cap});
+    const r=await post({action:"saveTeam",nick:d.nick.trim(),area:d.area,sede:d.sede.trim(),rel:d.rel,mods:d.mods,cap:d.cap});
     if(!r.ok) throw new Error(r.error);
     S.dirty=false; if(r.state) applyState(r.state); toast("Squadra inviata");
   }catch(e){ toast(e.message||"Invio non riuscito"); }
   renderTeam();
 }
 
+/* ---------- bingo ---------- */
+const LINES=(()=>{const L=[];for(let r=0;r<5;r++)L.push([0,1,2,3,4].map(c=>r*5+c));for(let c=0;c<5;c++)L.push([0,1,2,3,4].map(r=>r*5+c));L.push([0,6,12,18,24]);L.push([4,8,12,16,20]);return L;})();
+function renderBingo(){
+  $("bingoRule").textContent=`Ogni riga, colonna o diagonale vale ${fmt(S.cfg.bingoRiga)}; la cartella piena ${fmt(S.cfg.bingoPiena)} in più.`;
+  const box=$("bingoBox"); box.replaceChildren();
+  const me=myTeam();
+  if(!me||!me.card||me.card.length!==24){ box.append(h("div",{class:"card"},h("div",{class:"empty",text:S.loaded?"Invia la tua squadra per ricevere la cartella.":"Caricamento…"}))); return; }
+  const B={}; S.bingo.forEach(b=>B[b.id]=b);
+  const cells=[...me.card.slice(0,12),"FREE",...me.card.slice(12)];
+  const on=cells.map(id=>id==="FREE"||!!(B[id]&&B[id].on));
+  const win=new Set(); let lines=0; LINES.forEach(l=>{ if(l.every(i=>on[i])){ lines++; l.forEach(i=>win.add(i)); } });
+  const grid=h("div",{class:"bgrid5"});
+  cells.forEach((id,i)=>grid.append(h("div",{class:"bcell"+(on[i]?" on":"")+(win.has(i)?" win":"")+(id==="FREE"?" free":""),title:B[id]&&B[id].at?"Sentita "+B[id].at:""},id==="FREE"?"Pausa caffè ☕":(B[id]?B[id].t:"?"))));
+  const marked=on.filter(Boolean).length-1;
+  box.append(grid,h("div",{class:"bstat"},h("b",{text:`${lines} ${lines===1?"linea":"linee"} · ${fmt(me.pg||0)} punti`}),h("span",{class:"muted",text:`${marked}/24 caselle`})));
+  const recent=S.bingo.filter(b=>b.on);
+  box.append(h("h3",{text:`Frasi già sentite (${recent.length}/${S.bingo.length})`}),
+    h("div",{class:"words"},...(recent.length?recent.map(b=>h("span",{class:"word",text:b.t})):[h("span",{class:"muted",text:"Nessuna, per ora."})])));
+}
+
 /* ---------- bets ---------- */
 function optionLabel(b,id){
   if(!id) return "";
   if(b.type.startsWith("poster")){ const p=POST.find(x=>x.id===id); return p?`Poster ${p.n} · ${p.ti}`:id; }
-  if(b.type==="sessione"){ const s=SESS.get(id); return s?`${DAYS[s.d]} ${s.t} · ${s.sala} · ${s.ti}`:id; }
+  if(b.type==="sessione"){ const s=SESS.get(id); return s?`${DAYS[s.d]} ${s.t} · ${s.ti}`:id; }
   const a=ART.get(id); return a?a.n:id;
 }
 function candidates(b,q){
   q=norm(q);
   if(b.type.startsWith("poster")){ const day=Number(b.type.split(":")[1]);
     return POST.filter(p=>p.d===day && (String(p.n).startsWith(q)||norm(p.ti+" "+p.a).includes(q))).slice(0,25).map(p=>[p.id,`${p.n}. ${p.ti}`,p.a]); }
-  if(b.type==="sessione") return [...SESS.values()].filter(s=>norm(s.ti+" "+s.k+" "+s.sala+" "+DAYS[s.d]).includes(q)).slice(0,25).map(s=>[s.id,s.ti,`${DAYS[s.d]} ${s.t} · ${s.sala}`]);
+  if(b.type==="sessione") return [...SESS.values()].filter(s=>norm(s.ti+" "+s.k+" "+s.sala+" "+DAYS[s.d]).includes(q)).map(s=>[s.id,s.ti,`${DAYS[s.d]} ${s.t} · ${s.sala}`]);
   return [...ART.values()].filter(a=>a.q.includes(q)).slice(0,25).map(a=>[a.id,a.n,a.c]);
 }
 function renderBets(){
   const box=$("betList"); box.replaceChildren();
   if(!S.bets.length){ box.append(h("div",{class:"card"},h("div",{class:"empty",text:S.loaded?"Nessuna scommessa aperta.":"Caricamento…"}))); return; }
-  const mine=S.teams.find(t=>t.pid===S.uid);
+  const mine=myTeam();
   for(const b of S.bets){
     const my=S.mybets.find(x=>x.id===b.id), closed=(b.close&&now()>b.close)||!!b.result;
     const card=h("div",{class:"card",style:"padding:12px 14px;margin-bottom:10px"},
@@ -425,7 +466,7 @@ function renderBets(){
     if(!closed){
       if(!mine){ card.append(h("div",{class:"muted",style:"font-size:13px;margin-top:6px",text:"Invia prima la tua squadra per scommettere."})); }
       else{
-        const inp=h("input",{type:"search",placeholder:b.type.startsWith("poster")?"Numero, titolo o autore del poster":b.type==="sessione"?"Cerca la sessione":"Cerca il relatore",style:"margin-top:8px"});
+        const inp=h("input",{type:"search",placeholder:b.type.startsWith("poster")?"Numero, titolo o autore del poster":b.type==="sessione"?"Cerca la sessione":"Cerca la persona",style:"margin-top:8px"});
         const res=h("div",{class:"card list results",style:"margin-top:6px",hidden:true});
         inp.addEventListener("input",()=>{ const q=inp.value.trim(); res.replaceChildren(); if(q.length<1){res.hidden=true;return;} res.hidden=false;
           const c=candidates(b,q); if(!c.length) res.append(h("div",{class:"empty",text:"Nessun risultato"}));
@@ -443,40 +484,22 @@ async function bet(b,id){
   renderBets();
 }
 
-/* ---------- relatori ---------- */
-function renderArtists(){
-  const q=norm($("artSearch").value.trim()), sort=$("artSort").value, box=$("artList");
-  let list=[...ART.values()].filter(a=>(S.day==null||a.apps.some(x=>x.d===S.day)) && (!q||a.q.includes(q)));
-  if(sort==="pts") list.sort((a,b)=>P(b.id)-P(a.id)||a.price-b.price); else if(sort==="price") list.sort((a,b)=>b.price-a.price);
-  $("artCount").textContent=`${list.length} ${list.length===1?"persona":"persone"}`;
-  box.replaceChildren();
-  if(!ART.size){ box.append(h("div",{class:"empty",text:"Caricamento…"})); return; }
-  if(!list.length){ box.append(h("div",{class:"empty",text:"Nessun risultato"})); return; }
-  const RL={REL:"Parla",MOD:"Modera",COM:"Comunicazione"};
-  for(const a of list.slice(0,150)){
-    const k="a"+a.id, open=S.open.has(k), p=P(a.id);
-    const row=h("div",{class:"row",role:"button",tabindex:"0","aria-expanded":String(open)},
-      h("div",{class:"main"},h("div",{class:"nm",text:a.n}),h("div",{class:"sub",text:(a.c?a.c+" · ":"")+`${a.apps.length} ${a.apps.length===1?"presenza":"presenze"}`})),
-      h("span",{class:"pts "+(p>0?"pos":p<0?"neg":"muted"),text:fmt(p)}), h("span",{class:"price",text:a.price+" N"}));
-    const tg=()=>{ open?S.open.delete(k):S.open.add(k); renderArtists(); };
-    row.addEventListener("click",tg); row.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();tg();} });
-    if(open){ const ap=h("div",{class:"apps"});
-      for(const x of a.apps){ const s=SESS.get(x.s); ap.append(h("div",{},h("span",{class:"when",text:`${DAYS[x.d]} ${x.t}`}),h("span",{},h("span",{class:"role",text:(RL[x.ro]||"")+" · "+(s?s.sala:"")+(s&&s.c?" · comune":"")+" "}),x.ti||(s?s.ti:"")))); }
-      row.append(ap); }
-    box.append(row);
-  }
-  if(list.length>150) box.append(h("div",{class:"empty",text:`Altri ${list.length-150}: affina la ricerca`}));
-}
-function renderDayChips(){
-  $("dayChips").replaceChildren(...[["Tutti",null],...DAYS.map((d,i)=>[d,i])].map(([l,v])=>h("button",{class:"chip",type:"button","aria-pressed":String(S.day===v),onclick:()=>{S.day=v;renderDayChips();renderArtists();}},l)));
-}
+/* ---------- rules ---------- */
 function renderRules(){
   const tb=$("evTable"); tb.replaceChildren();
-  if(!S.eventi.length){ tb.append(h("tr",{},h("td",{class:"muted",text:"Caricamento…"}))); return; }
+  if(!S.eventi.length) tb.append(h("tr",{},h("td",{class:"muted",text:"Caricamento…"})));
   for(const cat of ["oggettivo","soggettivo","organizzatori"]){
-    const evs=S.eventi.filter(e=>e.cat===cat); if(!evs.length) continue;
+    const evs=S.eventi.filter(e=>e.cat===cat && e.code!=="COM"); if(!evs.length) continue;
     tb.append(h("tr",{},h("td",{colspan:"2",class:"muted",style:"font-size:12px;text-transform:uppercase;letter-spacing:.06em;font-weight:600",text:CAT_LABEL[cat]||cat})));
     for(const e of evs) tb.append(h("tr",{},h("td",{},e.label,e.cap?h("div",{class:"muted",style:"font-size:12px",text:`max ${e.cap} punti al giorno`}):null),h("td",{class:"p pts "+(e.p>0?"pos":"neg"),text:fmt(e.p)})));
+  }
+  tb.append(h("tr",{},h("td",{},"Bingo: riga, colonna o diagonale"),h("td",{class:"p pts pos",text:fmt(S.cfg.bingoRiga)})));
+  tb.append(h("tr",{},h("td",{},"Bingo: cartella piena"),h("td",{class:"p pts pos",text:fmt(S.cfg.bingoPiena)})));
+  const pl=$("progList"); pl.replaceChildren();
+  for(const s of [...SESS.values()].sort((a,b)=>a.d-b.d||a.t.localeCompare(b.t))){
+    const ppl=[...ART.values()].filter(a=>a.apps.some(x=>x.s===s.id)).map(a=>a.n).join(", ");
+    pl.append(h("div",{class:"row",style:"grid-template-columns:auto 1fr"},h("span",{class:"when num",style:"font-size:12px;color:var(--muted)",text:`${DAYS[s.d]} ${s.t}`}),
+      h("div",{class:"main"},h("div",{class:"nm",text:s.ti}),h("div",{class:"sub",text:`${s.k} · ${s.sala}${ppl?" · "+ppl:""}`}))));
   }
 }
 
@@ -487,12 +510,12 @@ async function post(body){
 }
 function applyState(st){
   if(!st||!st.ok) return;
-  S.cfg={...S.cfg,...st.config}; S.teams=st.teams||[]; S.pts=st.pts||{}; S.feed=st.feed||[]; S.bets=st.bets||[]; S.eventi=st.eventi||[];
+  S.cfg={...S.cfg,...st.config}; S.teams=st.teams||[]; S.pts=st.pts||{}; S.feed=st.feed||[]; S.bets=st.bets||[]; S.eventi=st.eventi||[]; S.bingo=st.bingo||[];
   if(st.mybets) S.mybets=st.mybets; if(st.now) S.skew=st.now-Date.now();
-  const me=S.teams.find(t=>t.pid===S.uid);
-  if(me && !S.loaded && !S.dirty){ S.draft={nick:me.nick||"",area:me.area||"",sede:me.sede||"",picks:[...me.picks].filter(Boolean),cap:me.cap||null}; saveDraft(); }
+  const me=myTeam();
+  if(me && !S.loaded && !S.dirty){ S.draft={nick:me.nick||"",area:me.area||"",sede:me.sede||"",rel:(me.rel||[]).filter(Boolean),mods:(me.mods||[]).filter(Boolean),cap:me.cap||null}; saveDraft(); }
   S.loaded=true; S.lastOk=Date.now(); banner("");
-  renderBoard(); renderFeed(); renderTeam(); renderBets(); renderRules(); if(S.view==="relatori") renderArtists();
+  renderBoard(); renderFeed(); renderTeam(); renderBingo(); renderBets(); renderRules();
 }
 async function refresh(){
   try{ const r=await fetch(API_URL+"?pid="+encodeURIComponent(S.uid),{cache:"no-store"}); applyState(await r.json()); }
@@ -502,25 +525,21 @@ function newToken(){ const a=new Uint8Array(18); crypto.getRandomValues(a); retu
 async function pidOf(t){ const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t)); return "p"+Array.from(new Uint8Array(d),b=>b.toString(16).padStart(2,"0")).join("").slice(0,16); }
 
 /* ---------- wiring ---------- */
-$("nick").addEventListener("input",e=>{S.draft.nick=e.target.value; dirty();});
-$("sede").addEventListener("input",e=>{S.draft.sede=e.target.value; dirty();});
+$("nick").addEventListener("input",e=>{S.draft.nick=e.target.value; S.dirty=true; saveDraft(); const pr=teamProblems(S.draft); $("saveTeam").disabled=locked()||pr.length>0||!S.loaded; $("saveState").textContent=pr[0]||"Non ancora inviata";});
+$("sede").addEventListener("input",e=>{S.draft.sede=e.target.value; S.dirty=true; saveDraft();});
 $("area").addEventListener("change",e=>{S.draft.area=e.target.value; dirty();});
-$("pickSearch").addEventListener("input",renderPick);
 $("saveTeam").addEventListener("click",saveTeam);
-$("artSearch").addEventListener("input",renderArtists);
-$("artSort").addEventListener("change",renderArtists);
-go(location.hash.slice(1)||"classifica"); renderDayChips(); renderBoard(); renderTeam(); renderBets();
+go(location.hash.slice(1)||"classifica"); renderBoard(); renderTeam(); renderBingo(); renderBets();
 
 (async()=>{
-  // programma, relatori e poster
   try{
-    const d=await (await fetch("dati.json")).json();
+    const d=await (await fetch("dati.json",{cache:"no-store"})).json();
     for(const s of d.sessions) SESS.set(s.id,s);
     const apps={}; for(const x of d.slots) (apps[x.r]=apps[x.r]||[]).push(x);
-    for(const r of d.roster) ART.set(r.id,{id:r.id,n:r.n,c:r.c,price:r.p,apps:apps[r.id]||[],q:norm(r.n+" "+r.c+" "+(apps[r.id]||[]).map(x=>x.ti).join(" "))});
+    for(const r of d.roster) ART.set(r.id,{id:r.id,n:r.n,c:r.c,price:r.p,rel:!!r.rel,mod:!!r.mod,apps:apps[r.id]||[],q:norm(r.n+" "+r.c+" "+(apps[r.id]||[]).map(x=>x.ti).join(" "))});
     POST.push(...d.posters);
   }catch(e){ banner("Non riesco a caricare il programma. Ricarica la pagina."); }
-  renderArtists(); renderTeam();
+  renderTeam(); renderRules();
   if(!API_URL || API_URL.startsWith("INCOLLA")){ banner("Configurazione mancante: manca l’indirizzo dell’app Apps Script."); return; }
   try{ S.token=localStorage.getItem("fs-token"); if(!S.token){ S.token=newToken(); localStorage.setItem("fs-token",S.token); } }catch(e){ S.token=S.token||newToken(); }
   S.uid=await pidOf(S.token);

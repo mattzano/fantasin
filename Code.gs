@@ -3,10 +3,14 @@
  *
  * PRIMA VOLTA
  *   1. Incolla questo file (Code.gs) e il file Arbitro.html nel progetto Apps Script del Foglio.
- *   2. Dal menu in alto scegli la funzione "setup" e premi Esegui: crea tutti i fogli,
- *      carica relatori, programma e poster da dati.json, imposta formule e protezioni.
+ *   2. Esegui la funzione "setup": crea i fogli, carica relatori, programma, poster e bingo
+ *      da dati.json, imposta formule e protezioni.
  *   3. Nel foglio "Arbitri" scrivi nome, PIN, sala e ruolo di ogni arbitro.
- *   4. Esegui il deployment → Gestisci deployment → modifica → Versione: Nuova versione → Esegui.
+ *   4. Deploy → Manage deployments → matita → Version: New version → Deploy.
+ *
+ * PASSAGGIO ALLA VERSIONE SEMPLIFICATA (12 sessioni, 3 relatori + 2 moderatori, bingo)
+ *   Esegui una volta "ricaricaGioco": svuota Relatori, Sessioni, Programma, Squadre, Puntate, Log
+ *   e Bingo, poi ricarica tutto da dati.json. Poi pubblica una nuova versione.
  *
  * LINK
  *   Dati per FantaSIN (JSON):  .../exec
@@ -16,22 +20,26 @@
 const TZ = 'Europe/Rome';
 const DATES = ['2026-10-24', '2026-10-25', '2026-10-26', '2026-10-27'];
 const DAY_LABEL = ['Sab 24', 'Dom 25', 'Lun 26', 'Mar 27'];
+const CARD = 24;   // caselle con frase (la centrale è libera)
 
 const HEAD = {
   Config:     ['Chiave', 'Valore', 'Nota'],
-  Relatori:   ['ID', 'Nome', 'Città', 'Prezzo', 'Presenze'],
+  Relatori:   ['ID', 'Nome', 'Città', 'Prezzo', 'Presenze', 'Relatore', 'Moderatore'],
   Sessioni:   ['ID', 'Giorno', 'Inizio', 'Fine', 'Sala', 'Tipo', 'Titolo', 'Comune'],
   Programma:  ['Slot', 'Sessione', 'Giorno', 'Ora', 'Sala', 'ID relatore', 'Relatore', 'Ruolo', 'Titolo', 'Stato'],
   Poster:     ['ID', 'Giorno', 'Numero', 'Titolo', 'Primo autore'],
   Eventi:     ['Codice', 'Descrizione', 'Punti', 'Categoria', 'Tetto giornaliero', 'Per ruolo'],
   Arbitri:    ['Nome', 'PIN', 'Sala', 'Ruolo'],
   Log:        ['Ora', 'Giorno', 'Sala', 'Arbitro', 'Relatore', 'ID relatore', 'Evento', 'Punti base', 'Punti', 'Stato', 'Slot', 'ID'],
-  Squadre:    ['Nickname', 'Area', 'Sede', 'Relatore 1', 'Relatore 2', 'Relatore 3', 'Capitano', 'Costo', 'Budget',
-               'Punti relatori', 'Punti scommesse', 'Totale', 'Aggiornata', 'PID'],
+  Squadre:    ['Nickname', 'Area', 'Sede', 'Relatore 1', 'Relatore 2', 'Relatore 3', 'Moderatore 1', 'Moderatore 2', 'Capitano',
+               'Costo', 'Budget', 'Punti relatori', 'Punti scommesse', 'Punti bingo', 'Totale', 'Aggiornata', 'PID', 'Cartella'],
   Scommesse:  ['ID', 'Domanda', 'Tipo', 'Chiusura', 'Risultato', 'Punti'],
   Puntate:    ['PID', 'Nickname', 'Scommessa', 'Scelta', 'Ora', 'Punti'],
+  Bingo:      ['ID', 'Frase', 'Categoria', 'Sentita', 'Ora', 'Arbitro'],
   Classifica: ['Pos', 'Nickname', 'Area', 'Sede', 'Punti']
 };
+// colonne Squadre (0-based)
+const SQ = { nick: 0, area: 1, sede: 2, r1: 3, m1: 6, cap: 8, cost: 9, ok: 10, pr: 11, pb: 12, pg: 13, tot: 14, ts: 15, pid: 16, card: 17 };
 
 const AREE = ['Cefalee', 'Demenze e cognitività', 'Disturbi del movimento', 'Epilessia', 'Malattie cerebrovascolari',
   'Malattie neuromuscolari', 'Neuroimmunologia e SM', 'Neuro-oncologia', 'Neurofisiologia', 'Neuroriabilitazione',
@@ -41,8 +49,11 @@ const AREE = ['Cefalee', 'Demenze e cognitività', 'Disturbi del movimento', 'Ep
 function ss_() { return SpreadsheetApp.getActiveSpreadsheet(); }
 function sh_(name) {
   let s = ss_().getSheetByName(name);
-  if (!s) { s = ss_().insertSheet(name); s.getRange(1, 1, 1, HEAD[name].length).setValues([HEAD[name]]).setFontWeight('bold'); s.setFrozenRows(1); }
+  if (!s) { s = ss_().insertSheet(name); header_(s, name); }
   return s;
+}
+function header_(s, name) {
+  s.getRange(1, 1, 1, HEAD[name].length).setValues([HEAD[name]]).setFontWeight('bold'); s.setFrozenRows(1);
 }
 function rows_(name) {
   const s = sh_(name), n = s.getLastRow();
@@ -71,6 +82,7 @@ function config_() {
   rows_('Config').forEach(r => { if (r[0]) c[String(r[0])] = r[1]; });
   return c;
 }
+function num_(v, d) { const n = Number(v); return isFinite(n) && v !== '' ? n : d; }
 function todayIdx_() {
   const i = DATES.indexOf(Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'));
   return i < 0 ? (new Date() < new Date(DATES[0] + 'T00:00:00+02:00') ? 0 : 3) : i;
@@ -98,10 +110,14 @@ function eventi_() {
   rows_('Eventi').forEach(r => { if (r[0]) m[r[0]] = { code: r[0], label: r[1], p: Number(r[2]) || 0, cat: r[3], cap: Math.abs(Number(r[4]) || 0), role: r[5] || '' }; });
   return m;
 }
-function prices_() {
+function people_() {
   const m = {};
-  rows_('Relatori').forEach(r => { if (r[0]) m[r[0]] = { n: r[1], p: Number(r[3]) || 0 }; });
+  rows_('Relatori').forEach(r => { if (r[0]) m[r[0]] = { n: r[1], p: Number(r[3]) || 0, rel: r[5] === 'sì', mod: r[6] === 'sì' }; });
   return m;
+}
+function setCfg_(key, val, note) {
+  const s = sh_('Config'), v = rows_('Config'), i = v.findIndex(r => r[0] === key);
+  if (i >= 0) s.getRange(i + 2, 2).setValue(val); else s.appendRow([key, val, note || '']);
 }
 
 /* ====================== setup ====================== */
@@ -112,15 +128,15 @@ function setup() {
 
   const cfg = sh_('Config');
   if (cfg.getLastRow() < 2) {
-    cfg.getRange(2, 1, 6, 3).setValues([
-      ['budget', 100, 'Neuroni a disposizione per 3 relatori'],
-      ['squadra', 3, 'Relatori per squadra (capitano compreso)'],
+    cfg.getRange(2, 1, 5, 3).setValues([
+      ['budget', 100, 'Neuroni a disposizione per la squadra'],
       ['scadenza_squadre', new Date('2026-10-25T08:30:00+01:00'), 'Dopo questa ora le squadre non si modificano più'],
-      ['dati_url', 'https://fantasin.it/dati.json', 'Da dove setup() carica relatori, programma e poster'],
+      ['dati_url', 'https://fantasin.it/dati.json', 'Da dove setup() carica relatori, programma, poster e bingo'],
       ['email_responsabile', '', 'Facoltativo: email Google del responsabile, che può modificare i fogli'],
       ['bonus_soggettivi', 'solo sessioni comuni', 'Promemoria: i bonus soggettivi valgono solo nelle sessioni comuni']
     ]);
   }
+  ensureCfg_();
 
   const ev = sh_('Eventi');
   if (ev.getLastRow() < 2) {
@@ -141,11 +157,12 @@ function setup() {
   const ar = sh_('Arbitri');
   if (ar.getLastRow() < 2) {
     const pin = () => String(Math.floor(1000 + Math.random() * 9000));
-    ar.getRange(2, 1, 4, 4).setValues([
+    ar.getRange(2, 1, 5, 4).setValues([
       ['Responsabile', pin(), 'Tutte', 'organizzatore'],
       ['Arbitro Auditorium', pin(), 'Auditorium', 'arbitro'],
-      ['Arbitro Sala 1', pin(), 'Sala 1', 'arbitro'],
-      ['Arbitro Sala 2', pin(), 'Sala 2', 'arbitro']
+      ['Arbitro Sala 4', pin(), 'Sala 4', 'arbitro'],
+      ['Arbitro Sala 5', pin(), 'Sala 5', 'arbitro'],
+      ['Arbitro Sala 6', pin(), 'Sala 6', 'arbitro']
     ]);
     ar.getRange('C2:C').setDataValidation(SpreadsheetApp.newDataValidation()
       .requireValueInList(['Tutte', 'Auditorium', 'Sala 1', 'Sala 2', 'Sala 3', 'Sala 4', 'Sala 5', 'Sala 6', 'Sala 7', 'Sala 8', 'Sala 9'], true).build());
@@ -165,27 +182,53 @@ function setup() {
     ]);
   }
 
-  // program data
-  if (sh_('Relatori').getLastRow() < 2) {
-    const url = config_().dati_url;
-    const data = JSON.parse(UrlFetchApp.fetch(url).getContentText());
-    const put = (name, rows) => { if (rows.length) sh_(name).getRange(2, 1, rows.length, rows[0].length).setValues(rows); };
-    put('Relatori', data.roster.map(r => [r.id, r.n, r.c, r.p, r.k]));
-    put('Sessioni', data.sessions.map(s => [s.id, "'" + DAY_LABEL[s.d], "'" + s.t, "'" + s.e, s.sala, s.k, s.ti, s.c ? 'sì' : 'no']));
-    const names = {}; data.roster.forEach(r => names[r.id] = r.n);
-    put('Programma', data.slots.map(x => [x.id, x.s, "'" + DAY_LABEL[x.d], "'" + x.t, x.sala, x.r, names[x.r] || x.r, x.ro, x.ti, '']));
-    put('Poster', data.posters.map(p => [p.id, "'" + DAY_LABEL[p.d], p.n, p.ti, p.a]));
-  }
-
-  // leaderboard formulas
-  const cl = sh_('Classifica');
-  cl.getRange('B2').setFormula('=IFERROR(SORT(FILTER({Squadre!A2:A,Squadre!B2:B,Squadre!C2:C,Squadre!L2:L},Squadre!A2:A<>"",Squadre!I2:I="OK"),4,FALSE),)');
-  cl.getRange('A2').setFormula('=ARRAYFORMULA(IF(E2:E="",,COUNTIF(E2:E,">"&E2:E)+1))');
-
+  if (sh_('Relatori').getLastRow() < 2) loadData_();
+  formulas_();
   fixDays_();
   protect_();
   SpreadsheetApp.flush();
   Logger.log('Setup completato. PIN arbitri nel foglio "Arbitri".');
+}
+
+function ensureCfg_() {
+  const c = config_();
+  if (c.relatori_squadra === undefined) setCfg_('relatori_squadra', 3, 'Relatori per squadra');
+  if (c.moderatori_squadra === undefined) setCfg_('moderatori_squadra', 2, 'Moderatori per squadra');
+  if (c.bingo_riga === undefined) setCfg_('bingo_riga', 10, 'Punti per ogni riga, colonna o diagonale del bingo');
+  if (c.bingo_piena === undefined) setCfg_('bingo_piena', 30, 'Punti extra per la cartella piena');
+}
+
+function loadData_() {
+  const data = JSON.parse(UrlFetchApp.fetch(config_().dati_url + '?v=' + Date.now()).getContentText());
+  const put = (name, rows) => { if (rows.length) sh_(name).getRange(2, 1, rows.length, rows[0].length).setValues(rows); };
+  put('Relatori', data.roster.map(r => [r.id, r.n, r.c, r.p, r.k, r.rel ? 'sì' : 'no', r.mod ? 'sì' : 'no']));
+  put('Sessioni', data.sessions.map(s => [s.id, "'" + DAY_LABEL[s.d], "'" + s.t, "'" + s.e, s.sala, s.k, s.ti, s.c ? 'sì' : 'no']));
+  const names = {}; data.roster.forEach(r => names[r.id] = r.n);
+  put('Programma', data.slots.map(x => [x.id, x.s, "'" + DAY_LABEL[x.d], "'" + x.t, x.sala, x.r, names[x.r] || x.r, x.ro, x.ti, '']));
+  if (sh_('Poster').getLastRow() < 2) put('Poster', data.posters.map(p => [p.id, "'" + DAY_LABEL[p.d], p.n, p.ti, p.a]));
+  if (sh_('Bingo').getLastRow() < 2 && data.bingo) put('Bingo', data.bingo.map(b => [b.id, b.t, b.cat, '', '', '']));
+}
+
+function formulas_() {
+  const cl = sh_('Classifica');
+  cl.getRange('B2').setFormula('=IFERROR(SORT(FILTER({Squadre!A2:A,Squadre!B2:B,Squadre!C2:C,Squadre!O2:O},Squadre!A2:A<>"",Squadre!K2:K="OK"),4,FALSE),)');
+  cl.getRange('A2').setFormula('=ARRAYFORMULA(IF(E2:E="",,COUNTIF(E2:E,">"&E2:E)+1))');
+}
+
+/** Passaggio al gioco semplificato: ricarica programma e azzera squadre, puntate, log e bingo. */
+function ricaricaGioco() {
+  ['Relatori', 'Sessioni', 'Programma', 'Squadre', 'Puntate', 'Log', 'Bingo', 'Classifica'].forEach(n => {
+    const s = sh_(n);
+    s.getProtections(SpreadsheetApp.ProtectionType.SHEET).forEach(p => p.remove());
+    s.clear(); header_(s, n);
+  });
+  ensureCfg_();
+  loadData_();
+  formulas_();
+  protect_();
+  bust_();
+  SpreadsheetApp.flush();
+  Logger.log('Gioco ricaricato: ' + (sh_('Relatori').getLastRow() - 1) + ' persone, ' + (sh_('Sessioni').getLastRow() - 1) + ' sessioni, ' + (sh_('Bingo').getLastRow() - 1) + ' frasi bingo.');
 }
 
 function protect_() {
@@ -205,7 +248,7 @@ function protect_() {
 function recompute_() {
   const s = sh_('Log'), n = s.getLastRow();
   if (n < 2) return;
-  const v = s.getRange(2, 1, n - 1, 12).getValues();
+  const v = rows_('Log');
   const caps = eventi_(), used = {};
   const outCol = v.map(r => {
     if (r[9] !== 'ok') return [0];
@@ -219,6 +262,35 @@ function recompute_() {
   s.getRange(2, 9, outCol.length, 1).setValues(outCol);
 }
 
+/* ====================== bingo ====================== */
+const LINES = (() => {
+  const L = [];
+  for (let r = 0; r < 5; r++) L.push([0, 1, 2, 3, 4].map(c => r * 5 + c));
+  for (let c = 0; c < 5; c++) L.push([0, 1, 2, 3, 4].map(r => r * 5 + c));
+  L.push([0, 6, 12, 18, 24]); L.push([4, 8, 12, 16, 20]);
+  return L;
+})();
+function called_() { const c = {}; rows_('Bingo').forEach(r => { if (r[0] && r[3] === 'sì') c[r[0]] = true; }); return c; }
+function newCard_() {
+  const ids = rows_('Bingo').map(r => r[0]).filter(Boolean);
+  for (let i = ids.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); const t = ids[i]; ids[i] = ids[j]; ids[j] = t; }
+  return ids.slice(0, CARD);
+}
+function bingoScore_(card, called, cfg) {
+  if (!card || card.length !== CARD) return { lines: 0, full: false, pts: 0 };
+  const cells = card.slice(0, 12).concat(['FREE'], card.slice(12));
+  const on = cells.map(id => id === 'FREE' || !!called[id]);
+  const lines = LINES.filter(l => l.every(i => on[i])).length;
+  const full = on.every(Boolean);
+  return { lines: lines, full: full, pts: lines * num_(cfg.bingo_riga, 10) + (full ? num_(cfg.bingo_piena, 30) : 0) };
+}
+function recomputeBingo_() {
+  const s = sh_('Squadre'), v = rows_('Squadre');
+  if (!v.length) return;
+  const called = called_(), cfg = config_();
+  s.getRange(2, SQ.pg + 1, v.length, 1).setValues(v.map(r => [r[SQ.nick] ? bingoScore_(String(r[SQ.card]).split(',').filter(Boolean), called, cfg).pts : '']));
+}
+
 /* ====================== public JSON (FantaSIN) ====================== */
 function state_() {
   const cache = CacheService.getScriptCache();
@@ -226,9 +298,11 @@ function state_() {
   if (hit) return JSON.parse(hit);
   SpreadsheetApp.flush();
   const cfg = config_();
-  const teams = rows_('Squadre').filter(r => r[0]).map(r => ({
-    pid: r[13], nick: r[0], area: r[1], sede: r[2], picks: [r[3], r[4], r[5]], cap: r[6],
-    cost: Number(r[7]) || 0, ok: r[8] === 'OK', pr: Number(r[9]) || 0, pb: Number(r[10]) || 0, tot: Number(r[11]) || 0
+  const teams = rows_('Squadre').filter(r => r[SQ.nick]).map(r => ({
+    pid: r[SQ.pid], nick: r[SQ.nick], area: r[SQ.area], sede: r[SQ.sede],
+    rel: [r[SQ.r1], r[SQ.r1 + 1], r[SQ.r1 + 2]], mods: [r[SQ.m1], r[SQ.m1 + 1]], cap: r[SQ.cap],
+    cost: Number(r[SQ.cost]) || 0, ok: r[SQ.ok] === 'OK', pr: Number(r[SQ.pr]) || 0, pb: Number(r[SQ.pb]) || 0,
+    pg: Number(r[SQ.pg]) || 0, tot: Number(r[SQ.tot]) || 0, card: String(r[SQ.card] || '').split(',').filter(Boolean)
   }));
   const ranked = teams.filter(t => t.ok).sort((a, b) => b.tot - a.tot);
   ranked.forEach(t => { t.pos = 1 + ranked.filter(x => x.tot > t.tot).length; });
@@ -242,13 +316,16 @@ function state_() {
   const bets = rows_('Scommesse').filter(r => r[0]).map(r => ({
     id: r[0], q: r[1], type: r[2], close: asDate_(r[3]) ? asDate_(r[3]).getTime() : null, result: String(r[4] || ''), p: Number(r[5]) || 0
   }));
+  const bingo = rows_('Bingo').filter(r => r[0]).map(r => ({ id: r[0], t: r[1], cat: r[2], on: r[3] === 'sì',
+    at: r[3] === 'sì' && asDate_(r[4]) ? Utilities.formatDate(asDate_(r[4]), TZ, 'EEE HH:mm') : '' }));
   const st = {
     ok: true, now: Date.now(),
     config: {
-      budget: Number(cfg.budget) || 100, size: Number(cfg.squadra) || 3,
-      deadline: asDate_(cfg.scadenza_squadre) ? asDate_(cfg.scadenza_squadre).getTime() : null, aree: AREE
+      budget: num_(cfg.budget, 100), nrel: num_(cfg.relatori_squadra, 3), nmod: num_(cfg.moderatori_squadra, 2),
+      deadline: asDate_(cfg.scadenza_squadre) ? asDate_(cfg.scadenza_squadre).getTime() : null, aree: AREE,
+      bingoRiga: num_(cfg.bingo_riga, 10), bingoPiena: num_(cfg.bingo_piena, 30)
     },
-    teams: teams.map(t => ({ ...t })), pts: pts, feed: feed, bets: bets,
+    teams: teams, pts: pts, feed: feed, bets: bets, bingo: bingo,
     eventi: Object.values(ev).map(e => ({ code: e.code, label: e.label, p: e.p, cat: e.cat, cap: e.cap }))
   };
   cache.put('state', JSON.stringify(st), 15);
@@ -264,7 +341,7 @@ function doGet(e) {
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DEFAULT);
   }
   if (p.action === 'prezzi') {
-    return out_({ ok: true, prices: Object.fromEntries(Object.entries(prices_()).map(([k, v]) => [k, v.p])) }, p.callback);
+    return out_({ ok: true, prices: Object.fromEntries(Object.entries(people_()).map(([k, v]) => [k, v.p])) }, p.callback);
   }
   const st = state_();
   if (p.pid) {
@@ -289,34 +366,39 @@ function doPost(e) {
 }
 
 function saveTeam_(pid, q) {
-  const cfg = config_(), size = Number(cfg.squadra) || 3, budget = Number(cfg.budget) || 100;
+  const cfg = config_(), nrel = num_(cfg.relatori_squadra, 3), nmod = num_(cfg.moderatori_squadra, 2), budget = num_(cfg.budget, 100);
   const dl = asDate_(cfg.scadenza_squadre);
   if (dl && new Date() > dl) return { ok: false, error: 'Tempo scaduto: le squadre non si possono più modificare' };
   const nick = clip_(q.nick, 24).replace(/^'/, '');
   if (nick.length < 2) return { ok: false, error: 'Scegli un nickname di almeno 2 caratteri' };
   const area = AREE.indexOf(q.area) >= 0 ? q.area : 'Altro';
   const sede = clip_(q.sede, 40);
-  const picks = (q.picks || []).map(String);
-  const pr = prices_();
-  if (picks.length !== size || new Set(picks).size !== size || picks.some(p => !pr[p])) return { ok: false, error: 'Scegli ' + size + ' relatori diversi dalla lista' };
-  if (picks.indexOf(String(q.cap)) < 0) return { ok: false, error: 'Il capitano deve essere uno dei tuoi relatori' };
-  const cost = picks.reduce((s, p) => s + pr[p].p, 0);
+  const rel = (q.rel || []).map(String), mods = (q.mods || []).map(String), all = rel.concat(mods);
+  const pe = people_();
+  if (rel.length !== nrel || rel.some(p => !pe[p] || !pe[p].rel)) return { ok: false, error: 'Scegli ' + nrel + ' relatori dalla lista' };
+  if (mods.length !== nmod || mods.some(p => !pe[p] || !pe[p].mod)) return { ok: false, error: 'Scegli ' + nmod + ' moderatori dalla lista' };
+  if (new Set(all).size !== all.length) return { ok: false, error: 'Ogni persona può comparire una sola volta' };
+  if (all.indexOf(String(q.cap)) < 0) return { ok: false, error: 'Il capitano deve essere uno dei tuoi cinque' };
+  const cost = all.reduce((s, p) => s + pe[p].p, 0);
   if (cost > budget) return { ok: false, error: 'Budget superato: ' + cost + ' su ' + budget + ' Neuroni' };
 
   const s = sh_('Squadre'), v = rows_('Squadre');
-  const clash = v.findIndex(r => String(r[0]).toLowerCase() === nick.toLowerCase() && r[13] !== pid);
+  const clash = v.findIndex(r => String(r[SQ.nick]).toLowerCase() === nick.toLowerCase() && r[SQ.pid] !== pid);
   if (clash >= 0) return { ok: false, error: 'Nickname già usato da un altro giocatore' };
-  let row = v.findIndex(r => r[13] === pid);
-  row = row >= 0 ? row + 2 : Math.max(2, s.getLastRow() + 1);
-  const r = row;
-  s.getRange(r, 1, 1, 14).setValues([[
-    clip_(nick, 24), area, sede, picks[0], picks[1], picks[2], q.cap,
-    `=SUMIFS(Relatori!$D:$D,Relatori!$A:$A,D${r})+SUMIFS(Relatori!$D:$D,Relatori!$A:$A,E${r})+SUMIFS(Relatori!$D:$D,Relatori!$A:$A,F${r})`,
-    `=IF(H${r}<=VLOOKUP("budget",Config!$A:$B,2,FALSE),"OK","FUORI BUDGET")`,
-    `=SUMIFS(Log!$I:$I,Log!$F:$F,D${r},Log!$J:$J,"ok")+SUMIFS(Log!$I:$I,Log!$F:$F,E${r},Log!$J:$J,"ok")+SUMIFS(Log!$I:$I,Log!$F:$F,F${r},Log!$J:$J,"ok")+SUMIFS(Log!$I:$I,Log!$F:$F,G${r},Log!$J:$J,"ok")`,
-    `=SUMIFS(Puntate!$F:$F,Puntate!$A:$A,N${r})`,
-    `=IF(I${r}="OK",J${r}+K${r},0)`,
-    new Date(), pid
+  const idx = v.findIndex(r => r[SQ.pid] === pid);
+  const r = idx >= 0 ? idx + 2 : Math.max(2, s.getLastRow() + 1);
+  const card = idx >= 0 && String(v[idx][SQ.card]).split(',').filter(Boolean).length === CARD ? String(v[idx][SQ.card]) : newCard_().join(',');
+  const priceSum = ['D', 'E', 'F', 'G', 'H'].map(c => `SUMIFS(Relatori!$D:$D,Relatori!$A:$A,${c}${r})`).join('+');
+  const logSum = ['D', 'E', 'F', 'G', 'H', 'I'].map(c => `SUMIFS(Log!$I:$I,Log!$F:$F,${c}${r},Log!$J:$J,"ok")`).join('+');
+  s.getRange(r, 1, 1, 18).setValues([[
+    clip_(nick, 24), area, sede, rel[0], rel[1], rel[2], mods[0], mods[1], q.cap,
+    '=' + priceSum,
+    `=IF(J${r}<=VLOOKUP("budget",Config!$A:$B,2,FALSE),"OK","FUORI BUDGET")`,
+    '=' + logSum,
+    `=SUMIFS(Puntate!$F:$F,Puntate!$A:$A,Q${r})`,
+    bingoScore_(card.split(','), called_(), cfg).pts,
+    `=IF(K${r}="OK",L${r}+M${r}+N${r},0)`,
+    new Date(), pid, card
   ]]);
   bust_();
   return { ok: true, pid: pid, state: state_() };
@@ -328,7 +410,7 @@ function placeBet_(pid, q) {
   const close = asDate_(bet[3]);
   if (close && new Date() > close) return { ok: false, error: 'Scommessa chiusa' };
   if (bet[4] !== '' && bet[4] != null) return { ok: false, error: 'Risultato già inserito' };
-  const team = rows_('Squadre').find(r => r[13] === pid);
+  const team = rows_('Squadre').find(r => r[SQ.pid] === pid);
   if (!team) return { ok: false, error: 'Prima salva la tua squadra' };
   const choice = clip_(q.choice, 40);
   if (!choice) return { ok: false, error: 'Scegli un’opzione' };
@@ -336,7 +418,7 @@ function placeBet_(pid, q) {
   let row = v.findIndex(r => r[0] === pid && r[2] === q.bet);
   row = row >= 0 ? row + 2 : Math.max(2, s.getLastRow() + 1);
   const r = row;
-  s.getRange(r, 1, 1, 6).setValues([[pid, team[0], q.bet, choice, new Date(),
+  s.getRange(r, 1, 1, 6).setValues([[pid, team[SQ.nick], q.bet, choice, new Date(),
     `=IFERROR(IF(VLOOKUP(C${r},Scommesse!$A:$F,5,FALSE)="",0,IF(TO_TEXT(VLOOKUP(C${r},Scommesse!$A:$F,5,FALSE))=TO_TEXT(D${r}),VLOOKUP(C${r},Scommesse!$A:$F,6,FALSE),0)),0)`]]);
   bust_();
   return { ok: true, mybets: rows_('Puntate').filter(x => x[0] === pid).map(x => ({ id: x[2], choice: String(x[3]), p: x[5] })) };
@@ -356,7 +438,9 @@ function arbLogin(pin) {
   const roster = rows_('Relatori').map(r => [r[0], r[1], r[2]]);
   const sale = ['Auditorium', 'Sala 1', 'Sala 2', 'Sala 3', 'Sala 4', 'Sala 5', 'Sala 6', 'Sala 7', 'Sala 8', 'Sala 9'];
   const sessions = rows_('Sessioni').map(r => [r[0], r[1], String(r[2]), r[4], r[5], r[6]]);
-  return safe_({ me: me, roster: roster, sale: sale, today: todayIdx_(), days: DAY_LABEL, eventi: Object.values(eventi_()), sessions: sessions });
+  const days = DAY_LABEL.map((d, i) => i);
+  const used = {}; sessions.forEach(s => used[s[3]] = true);
+  return safe_({ me: me, roster: roster, sale: sale.filter(s => used[s]), today: todayIdx_(), days: DAY_LABEL, eventi: Object.values(eventi_()), sessions: sessions });
 }
 
 function arbData(pin, day, sala) {
@@ -379,11 +463,12 @@ function arbData(pin, day, sala) {
     id: r[0], s: r[1], t: String(r[3]), r: r[5], n: names[r[5]] || r[6], ro: r[7], ti: r[8], done: bySlot[r[0]] || null
   }));
   slots.forEach(x => { x.subj = subj[x.s + '|' + x.r] || []; });
-  const recent = log.map((r, i) => ({
+  const recent = log.map(r => ({
     id: r[11], t: Utilities.formatDate(asDate_(r[0]) || new Date(), TZ, 'HH:mm'), d: r[1], sala: r[2], by: r[3], n: r[4], e: r[6], p: Number(r[8]) || 0, st: r[9]
   })).filter(x => me.all || x.by === me.name).slice(-40).reverse();
   const bets = me.org ? rows_('Scommesse').map(r => ({ id: r[0], q: r[1], type: r[2], result: String(r[4] || '') })) : [];
-  return safe_({ sala: sala, day: day, sessions: ses, slots: slots, recent: recent, bets: bets });
+  const bingo = rows_('Bingo').filter(r => r[0]).map(r => ({ id: r[0], t: r[1], cat: r[2], on: r[3] === 'sì', by: r[5] || '' }));
+  return safe_({ sala: sala, day: day, sessions: ses, slots: slots, recent: recent, bets: bets, bingo: bingo });
 }
 
 function arbRegistra(pin, req) {
@@ -396,7 +481,7 @@ function arbRegistra(pin, req) {
     if (ev.cat === 'organizzatori') {
       if (!me.org) throw new Error('Premi e poster li inseriscono solo gli organizzatori');
       day = DAY_LABEL[todayIdx_()]; sala = '—';
-      if (!prices_()[rid]) throw new Error('Relatore non trovato');
+      if (!people_()[rid]) throw new Error('Relatore non trovato');
     } else if (ev.cat === 'oggettivo') {
       const sl = rows_('Programma').find(r => r[0] === req.slot);
       if (!sl) throw new Error('Intervento non trovato');
@@ -414,7 +499,7 @@ function arbRegistra(pin, req) {
       if (!inSess) throw new Error('Questo relatore non è in questa sessione');
       day = se[1]; sala = se[4]; slotKey = se[0];
     }
-    const name = (prices_()[rid] || {}).n || rid;
+    const name = (people_()[rid] || {}).n || rid;
     const id = Utilities.getUuid().slice(0, 8);
     sh_('Log').appendRow([new Date(), "'" + dayFix_(day), sala, me.name, name, rid, ev.code, ev.p, ev.p, 'ok', slotKey, id]);
     if (slotKey.startsWith('SL')) setSlotState_(slotKey, ev.code === 'ASS' ? 'assente' : 'confermato');
@@ -457,6 +542,19 @@ function arbAnnulla(pin, id) {
     if (!me.all && v[i][3] !== me.name) throw new Error('Puoi annullare solo le tue registrazioni');
     if (v[i][9] !== 'ok') throw new Error('Già annullata');
     return annullaRow_(i, v);
+  } finally { lock.releaseLock(); }
+}
+
+function arbBingo(pin, id, on) {
+  const me = ref_(pin);
+  const lock = LockService.getScriptLock(); lock.waitLock(20000);
+  try {
+    const s = sh_('Bingo'), v = rows_('Bingo'), i = v.findIndex(r => r[0] === id);
+    if (i < 0) throw new Error('Frase non trovata');
+    if (!on && !me.all && v[i][5] && v[i][5] !== me.name) throw new Error('Può toglierla solo ' + v[i][5] + ' o il responsabile');
+    s.getRange(i + 2, 4, 1, 3).setValues([on ? ['sì', new Date(), me.name] : ['', '', '']]);
+    recomputeBingo_(); bust_();
+    return { ok: true, msg: (on ? 'Bingo, segnata: ' : 'Bingo, tolta: ') + v[i][1] };
   } finally { lock.releaseLock(); }
 }
 
