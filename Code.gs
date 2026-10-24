@@ -97,7 +97,7 @@ function setup() {
       ['budget', 100, 'Neuroni a disposizione per 3 relatori'],
       ['squadra', 3, 'Relatori per squadra (capitano compreso)'],
       ['scadenza_squadre', new Date('2026-10-25T08:30:00+01:00'), 'Dopo questa ora le squadre non si modificano più'],
-      ['dati_url', 'https://mattzano.github.io/fantasin/dati.json', 'Da dove setup() carica relatori, programma e poster'],
+      ['dati_url', 'https://fantasin.it/dati.json', 'Da dove setup() carica relatori, programma e poster'],
       ['email_responsabile', '', 'Facoltativo: email Google del responsabile, che può modificare i fogli'],
       ['bonus_soggettivi', 'solo sessioni comuni', 'Promemoria: i bonus soggettivi valgono solo nelle sessioni comuni']
     ]);

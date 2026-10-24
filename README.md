@@ -15,5 +15,5 @@ Fantacongresso per il 56° Congresso di Neurologia, Firenze, 24–27 ottobre 202
 - **Classifica**: formule nel Foglio (capitano ×2, controllo budget, scommesse).
 - **CORS**: GET semplice per leggere; POST con `Content-Type: text/plain` per scrivere (nessuna preflight). Il backend accetta anche `?callback=` (JSONP) come piano B.
 
-Link giocatori: `https://mattzano.github.io/fantasin/`
+Link giocatori: `https://fantasin.it/`
 Link arbitri: `https://script.google.com/macros/s/<ID>/exec?page=arbitro`
