@@ -53,6 +53,10 @@ input,select{width:100%;padding:11px 12px;border:1px solid var(--line);border-ra
 .muted{color:var(--muted)}
 [hidden]{display:none!important}
 .res{max-height:260px;overflow:auto}
+.bcat{padding:8px 12px 4px;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:700;background:var(--soft)}
+.bgrid{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px 12px}
+.bph{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:7px 11px;font-size:13.5px;font-weight:600}
+.bph[aria-pressed=true]{background:var(--good);border-color:var(--good);color:#fff}
 .res button{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);background:none;padding:10px 12px}
 label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:10px 0 5px}
 </style>
@@ -81,6 +85,10 @@ label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);margin:1
     </div>
     <h2 id="salaTitle">Programma</h2>
     <div id="prog"><div class="empty">Caricamento…</div></div>
+
+    <h2>Bingo · frasi sentite</h2>
+    <p class="muted" style="font-size:13px;margin-top:-4px">Tocca una frase quando la senti (o la vedi succedere) in una delle sessioni del gioco: vale per le cartelle di tutti.</p>
+    <div class="card" id="bingo"><div class="empty">Caricamento…</div></div>
 
     <h2>Registrazioni</h2>
     <div class="card" id="recent"><div class="empty">Nessuna registrazione.</div></div>
@@ -179,6 +187,20 @@ function render(){
       r.st==="ok"&&S.me.all?h("button",{class:"btn sm",onclick:()=>annulla(r)},"Annulla"):h("span")));
   }
   if(S.me.org)renderBets();
+  renderBingo();
+}
+function renderBingo(){
+  const box=$("bingo");box.replaceChildren();const list=S.data.bingo||[];
+  if(!list.length){box.append(h("div",{class:"empty",text:"Nessuna frase caricata."}));return;}
+  const cats=[...new Set(list.map(b=>b.cat))];
+  for(const c of cats){
+    box.append(h("div",{class:"bcat",text:c+" · "+list.filter(b=>b.cat===c&&b.on).length+"/"+list.filter(b=>b.cat===c).length}));
+    box.append(h("div",{class:"bgrid"},list.filter(b=>b.cat===c).map(b=>h("button",{class:"bph","aria-pressed":String(b.on),title:b.by?("Segnata da "+b.by):"",onclick:()=>toggleBingo(b)},(b.on?"✓ ":"")+b.t))));
+  }
+}
+async function toggleBingo(b){
+  if(!await ask(b.on?"Togliere la frase dal bingo?":"Frase sentita in sala",b.t))return;
+  try{const x=await run("arbBingo",S.pin,b.id,!b.on);toast(x.msg);await load();}catch(e){toast(errMsg(e),true);}
 }
 async function reg(req,label,name){
   if(!await ask(name,label))return;
